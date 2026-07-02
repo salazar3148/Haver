@@ -11,6 +11,7 @@ import {
 } from 'recharts'
 import { useStore } from '../store/useStore'
 import { Modal, Empty, Bar, Segmented } from '../components/ui'
+import { LapseModal } from '../components/LapseModal'
 import { XpWidget } from '../App'
 import { computeStreak } from '../store/gamification'
 import { dayFraction, isDayFull, isSubDone, habitAppliesOn } from '../store/habits'
@@ -42,6 +43,7 @@ export function Habitos() {
   const { habits, addHabit, toggleHabit, toggleHabitSub, removeHabit } = useStore()
   const frozenDays = useStore((s) => s.frozenDays)
   const [modal, setModal] = useState(false)
+  const [lapseModal, setLapseModal] = useState(false)
   const [view, setView] = useState<View>('semana')
   const [name, setName] = useState('')
   const [icon, setIcon] = useState('💪')
@@ -222,9 +224,12 @@ export function Habitos() {
         <XpWidget />
       </div>
 
-      <div style={{ marginBottom: 18 }}>
+      <div style={{ marginBottom: 18, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         <button className="btn btn-primary" onClick={() => setModal(true)}>
           <Plus size={16} /> Nuevo hábito
+        </button>
+        <button className="btn" onClick={() => setLapseModal(true)}>
+          😵 Registrar tropiezo
         </button>
       </div>
 
@@ -502,6 +507,8 @@ export function Habitos() {
           <Plus size={16} /> Crear hábito
         </button>
       </Modal>
+
+      <LapseModal open={lapseModal} onClose={() => setLapseModal(false)} defaultArea="habito" />
     </>
   )
 }

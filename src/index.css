@@ -1796,6 +1796,18 @@ h3 {
 .cal-cell.today .cal-daynum {
   color: var(--violet);
 }
+.cal-lapse {
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  padding: 2px 4px;
+  border-radius: 7px;
+  color: var(--rose);
+  background: rgba(251, 113, 133, 0.16);
+}
 .cal-ring {
   position: relative;
   width: 30px;

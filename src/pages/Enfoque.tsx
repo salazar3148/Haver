@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Play, Pause, RotateCcw, Brain, Coffee, Zap, Clock, Settings2 } from 'lucide-react'
+import { Play, Pause, RotateCcw, Brain, Coffee, Zap, Clock, Settings2, Trash2 } from 'lucide-react'
 import {
   BarChart,
   Bar as RBar,
@@ -12,6 +12,8 @@ import { useStore } from '../store/useStore'
 import { useUi } from '../store/useUi'
 import { Stat, Modal } from '../components/ui'
 import { WheelPicker } from '../components/WheelPicker'
+import { LapseModal } from '../components/LapseModal'
+import { lapseAreaMeta } from '../store/lapses'
 import { XpWidget } from '../App'
 import { playChime, scaleColor } from '../utils/fx'
 import { todayISO, lastNDays, shortLabel } from '../utils/date'
@@ -25,9 +27,10 @@ const focusColorOf = (m: number) => scaleColor(m, FOCUS_MIN, FOCUS_MAX)
 const breakColorOf = (m: number) => scaleColor(m, BREAK_MIN, BREAK_MAX)
 
 export function Enfoque() {
-  const { tasks, focus, addFocusSession, addLapse } = useStore()
+  const { tasks, focus, lapses, addFocusSession, addLapse, removeLapse } = useStore()
   const { focusMin, breakMin, setFocusMin, setBreakMin } = useUi()
 
+  const [lapseModal, setLapseModal] = useState(false)
   const [phase, setPhase] = useState<Phase>('focus')
   const [secondsLeft, setSecondsLeft] = useState(focusMin * 60)
   const [running, setRunning] = useState(false)
@@ -129,6 +132,7 @@ export function Enfoque() {
   }, [focus])
 
   const pending = tasks.filter((t) => !t.done && t.date === today)
+  const todayLapses = lapses.filter((l) => l.date === today)
 
   // En la página principal se respeta la estética del tema (no la escala verde→rojo)
   const accent = phase === 'focus' ? 'var(--violet)' : 'var(--emerald)'
@@ -304,6 +308,47 @@ export function Enfoque() {
           </div>
 
           <div className="card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <div className="card-title" style={{ margin: 0 }}>
+                😵 Tropiezos de hoy
+                {todayLapses.length > 0 && (
+                  <span className="chip red" style={{ marginLeft: 8 }}>{todayLapses.length}</span>
+                )}
+              </div>
+              <button className="btn btn-sm" onClick={() => setLapseModal(true)}>
+                + Registrar
+              </button>
+            </div>
+            {todayLapses.length === 0 ? (
+              <div style={{ fontSize: 13, color: 'var(--faint)', padding: '4px 0' }}>
+                Ninguno hoy. Si te distraes durante un bloque, quedará registrado aquí.
+              </div>
+            ) : (
+              <div className="list">
+                {todayLapses.map((l) => {
+                  const m = lapseAreaMeta(l.area)
+                  return (
+                    <div className="list-row" key={l.id}>
+                      <div className="row-icon" style={{ background: `${m.color}22`, color: m.color }}>
+                        {m.emoji}
+                      </div>
+                      <div className="row-main">
+                        <div className="row-title">{l.trigger}</div>
+                        <div className="row-sub">
+                          {m.label} · {String(l.hour).padStart(2, '0')}:00{l.note ? ` · ${l.note}` : ''}
+                        </div>
+                      </div>
+                      <button className="icon-btn danger" style={{ width: 30, height: 30 }} onClick={() => removeLapse(l.id)}>
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="card">
             <div className="card-title">📈 Enfoque últimos 7 días</div>
             <ResponsiveContainer width="100%" height={170}>
               <BarChart data={weekData} margin={{ top: 6, right: 6, bottom: 0, left: -22 }}>
@@ -352,6 +397,8 @@ export function Enfoque() {
           Listo
         </button>
       </Modal>
+
+      <LapseModal open={lapseModal} onClose={() => setLapseModal(false)} defaultArea="enfoque" />
     </>
   )
 }

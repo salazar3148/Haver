@@ -20,6 +20,8 @@ import {
 } from 'recharts'
 import { useStore } from '../store/useStore'
 import { Modal } from '../components/ui'
+import { LapseModal } from '../components/LapseModal'
+import { lapseAreaMeta } from '../store/lapses'
 import { XpWidget } from '../App'
 import { dayCompliance, campaignSeries } from '../store/stats'
 import {
@@ -72,13 +74,14 @@ function Ring({ pct, size = 30 }: { pct: number; size?: number }) {
 
 export function Calendario() {
   const state = useStore()
-  const { events, campaigns, tasks, plans, habits, goals, frozenDays, addEvent, toggleEvent, removeEvent, addCampaign, removeCampaign, toggleTask, toggleFrozenDay, freezeRange } = state
+  const { events, campaigns, tasks, plans, habits, goals, lapses, frozenDays, addEvent, toggleEvent, removeEvent, addCampaign, removeCampaign, toggleTask, toggleFrozenDay, freezeRange, removeLapse } = state
 
   const [monthKeyView, setMonthKeyView] = useState(currentMonthKey())
   const [selected, setSelected] = useState<string | null>(null)
   const [campModal, setCampModal] = useState(false)
   const [campDetailId, setCampDetailId] = useState<string | null>(null)
   const [freezeModal, setFreezeModal] = useState(false)
+  const [lapseModal, setLapseModal] = useState(false)
   const [fzStart, setFzStart] = useState(todayISO())
   const [fzEnd, setFzEnd] = useState(todayISO())
 
@@ -122,6 +125,17 @@ export function Calendario() {
     return map
   }, [events])
 
+  const lapsesByDate = useMemo(() => {
+    const map = new Map<string, typeof lapses>()
+    lapses.forEach((l) => {
+      const arr = map.get(l.date) ?? []
+      arr.push(l)
+      map.set(l.date, arr)
+    })
+    map.forEach((arr) => arr.sort((a, b) => a.hour - b.hour))
+    return map
+  }, [lapses])
+
   const campaignsOn = (iso: string) => campaigns.filter((c) => iso >= c.startDate && iso <= c.endDate)
   const monthCampaigns = campaigns.filter(
     (c) => c.startDate.slice(0, 7) <= monthKeyView && c.endDate.slice(0, 7) >= monthKeyView
@@ -148,6 +162,7 @@ export function Calendario() {
   const selEvents = selected ? eventsByDate.get(selected) ?? [] : []
   const selTasks = selected ? tasks.filter((t) => t.date === selected) : []
   const selCampaigns = selected ? campaignsOn(selected) : []
+  const selLapses = selected ? lapsesByDate.get(selected) ?? [] : []
   const selPlan = selected ? plans[selected] : undefined
   const campDays = cEnd >= cStart ? Math.round((fromISO(cEnd).getTime() - fromISO(cStart).getTime()) / 86400000) + 1 : 0
 
@@ -190,6 +205,7 @@ export function Calendario() {
           const dc = iso <= today && !frozen ? dayCompliance(state, iso) : null
           const evs = eventsByDate.get(iso) ?? []
           const camps = campaignsOn(iso)
+          const lps = lapsesByDate.get(iso) ?? []
           const dayNum = fromISO(iso).getDate()
           return (
             <div
@@ -206,7 +222,17 @@ export function Calendario() {
               )}
               <div className="cal-head">
                 <span className="cal-daynum">{dayNum}</span>
-                {frozen ? <span title="Día congelado" style={{ fontSize: 15 }}>❄️</span> : dc && dc.has && <Ring pct={dc.pct} />}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                  {lps.length > 0 && (
+                    <span
+                      className="cal-lapse"
+                      title={`${lps.length} tropiezo${lps.length > 1 ? 's' : ''}`}
+                    >
+                      😵{lps.length > 1 ? lps.length : ''}
+                    </span>
+                  )}
+                  {frozen ? <span title="Día congelado" style={{ fontSize: 15 }}>❄️</span> : dc && dc.has && <Ring pct={dc.pct} />}
+                </div>
               </div>
               {evs.length > 0 && (
                 <div className="cal-events">
@@ -292,6 +318,45 @@ export function Calendario() {
             ))}
           </div>
         )}
+
+        {/* Tropiezos del día */}
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>
+              TROPIEZOS{selLapses.length > 0 ? ` (${selLapses.length})` : ''}
+            </div>
+            {selected === today && (
+              <button className="btn btn-sm" onClick={() => setLapseModal(true)}>
+                <Plus size={13} /> Registrar
+              </button>
+            )}
+          </div>
+          {selLapses.length === 0 ? (
+            <div style={{ fontSize: 13, color: 'var(--faint)' }}>
+              {selDay && selDay.has
+                ? 'Sin tropiezos este día. ¡Bien!'
+                : 'Sin tropiezos registrados este día.'}
+            </div>
+          ) : (
+            selLapses.map((l) => {
+              const m = lapseAreaMeta(l.area)
+              return (
+                <div className="day-meet" key={l.id} style={{ marginBottom: 6 }}>
+                  <span style={{ fontSize: 18 }}>{m.emoji}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, fontSize: 13.5 }}>{l.trigger}</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>
+                      {m.label} · {String(l.hour).padStart(2, '0')}:00{l.note ? ` · ${l.note}` : ''}
+                    </div>
+                  </div>
+                  <button className="icon-btn danger" style={{ width: 30, height: 30 }} onClick={() => removeLapse(l.id)}>
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              )
+            })
+          )}
+        </div>
 
         {/* Tareas del día */}
         {selTasks.length > 0 && (
@@ -565,6 +630,8 @@ export function Calendario() {
           </button>
         </div>
       </Modal>
+
+      <LapseModal open={lapseModal} onClose={() => setLapseModal(false)} defaultArea="general" />
     </>
   )
 }

@@ -7,7 +7,6 @@ import {
   Trophy,
   Timer,
   ListChecks,
-  TrendingUp,
   Palette,
   CalendarCheck,
   CalendarDays,
@@ -28,7 +27,6 @@ const items = [
   { to: '/metas', label: 'Metas', icon: Target },
   { to: '/finanzas', label: 'Finanzas', icon: Wallet },
   { to: '/estadisticas', label: 'Estadísticas', icon: BarChart3 },
-  { to: '/mejora', label: 'Mejora', icon: TrendingUp },
   { to: '/logros', label: 'Logros', icon: Trophy },
 ]
 

@@ -20,7 +20,6 @@ import { Metas } from './pages/Metas'
 import { Logros } from './pages/Logros'
 import { Enfoque } from './pages/Enfoque'
 import { Tareas } from './pages/Tareas'
-import { Mejora } from './pages/Mejora'
 import { Plan } from './pages/Plan'
 import { Calendario } from './pages/Calendario'
 import { Estadisticas } from './pages/Estadisticas'
@@ -133,7 +132,6 @@ function Shell({ picker, setPicker, effects }: { picker: boolean; setPicker: (v:
             <Route path="/habitos" element={<Habitos />} />
             <Route path="/metas" element={<Metas />} />
             <Route path="/finanzas" element={<Finanzas />} />
-            <Route path="/mejora" element={<Mejora />} />
             <Route path="/estadisticas" element={<Estadisticas />} />
             <Route path="/logros" element={<Logros />} />
           </Routes>
