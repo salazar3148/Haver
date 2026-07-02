@@ -210,7 +210,7 @@ export function Calendario() {
           return (
             <div
               key={iso}
-              className={`cal-cell ${inMonth ? '' : 'out'} ${iso === today ? 'today' : ''} ${frozen ? 'frozen' : ''}`}
+              className={`cal-cell ${inMonth ? '' : 'out'} ${iso === today ? 'today' : ''} ${frozen ? 'frozen' : ''} ${lps.length > 0 && !frozen ? 'broken' : ''}`}
               onClick={() => setSelected(iso)}
             >
               {camps.length > 0 && (

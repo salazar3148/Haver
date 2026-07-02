@@ -1774,6 +1774,58 @@ h3 {
     var(--panel);
   border-color: rgba(96, 165, 250, 0.35);
 }
+
+/* ===== Día con tropiezo: vidrio roto / agrietado ===== */
+.cal-cell.broken {
+  border-color: rgba(245, 41, 31, 0.6);
+  background:
+    radial-gradient(130% 130% at 52% 44%, rgba(245, 41, 31, 0.26), rgba(245, 41, 31, 0.07) 52%, transparent 74%),
+    var(--panel);
+  animation: crackPulse 2.6s ease-in-out infinite;
+}
+.cal-cell.broken::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%20preserveAspectRatio='none'%3E%3Cg%20fill='none'%20stroke='%23ffffff'%20stroke-opacity='0.92'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='M52%2044%20L22%206'%20stroke-width='1.1'/%3E%3Cpath%20d='M52%2044%20L74%202'%20stroke-width='0.9'/%3E%3Cpath%20d='M52%2044%20L99%2026'%20stroke-width='1'/%3E%3Cpath%20d='M52%2044%20L94%2072'%20stroke-width='0.9'/%3E%3Cpath%20d='M52%2044%20L60%2099'%20stroke-width='1.1'/%3E%3Cpath%20d='M52%2044%20L26%2096'%20stroke-width='1'/%3E%3Cpath%20d='M52%2044%20L2%2066'%20stroke-width='0.9'/%3E%3Cpath%20d='M52%2044%20L4%2026'%20stroke-width='1'/%3E%3Cpath%20d='M34%2024%20L48%2018%20L40%2038'%20stroke-width='0.7'/%3E%3Cpath%20d='M72%2034%20L62%2026%20L78%2018'%20stroke-width='0.7'/%3E%3Cpath%20d='M74%2062%20L60%2058%20L70%2080'%20stroke-width='0.7'/%3E%3Cpath%20d='M32%2068%20L44%2060%20L36%2084'%20stroke-width='0.7'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.6)) drop-shadow(0 0 3px rgba(245, 41, 31, 0.5));
+  opacity: 0.95;
+}
+/* El contenido (número, eventos) va por encima de las grietas */
+.cal-cell.broken > * {
+  position: relative;
+  z-index: 3;
+}
+.cal-cell.broken .cal-daynum {
+  color: #ff5b4d;
+  text-shadow: 0 0 8px rgba(245, 41, 31, 0.55);
+}
+.cal-cell.broken:hover {
+  transform: translateY(-2px);
+  animation: crackShake 0.45s ease;
+}
+@keyframes crackPulse {
+  0%, 100% {
+    box-shadow: inset 0 0 0 1px rgba(245, 41, 31, 0.4), 0 0 14px -6px rgba(245, 41, 31, 0.45);
+  }
+  50% {
+    box-shadow: inset 0 0 0 1px rgba(245, 41, 31, 0.72), 0 0 22px -2px rgba(245, 41, 31, 0.7);
+  }
+}
+@keyframes crackShake {
+  0%, 100% { transform: translate(0, -2px); }
+  20% { transform: translate(-1.5px, -1px); }
+  40% { transform: translate(1.5px, -3px); }
+  60% { transform: translate(-1px, -2px); }
+  80% { transform: translate(1px, -1px); }
+}
+[data-reduce='true'] .cal-cell.broken {
+  animation: none;
+}
 .cal-campaigns {
   display: flex;
   flex-direction: column;
