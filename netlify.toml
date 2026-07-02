@@ -1,0 +1,11 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# La app usa HashRouter (rutas tipo /#/plan), así que no depende de
+# reescrituras de servidor, pero este redirect es una red de seguridad
+# estándar para SPAs servidas en Netlify.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
