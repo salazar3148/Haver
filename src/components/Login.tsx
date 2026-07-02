@@ -2,8 +2,6 @@ import { useState } from 'react'
 import { LogIn, Loader2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
-// Login de un solo usuario: la cuenta se crea manualmente en el dashboard de
-// Supabase (Authentication > Users > Add user), no hay registro público.
 export function Login() {
   const [email, setEmail] = useState('')
   const [pass, setPass] = useState('')
@@ -11,8 +9,8 @@ export function Login() {
   const [msg, setMsg] = useState('')
 
   const submit = async () => {
-    if (!supabase || !email.trim() || pass.length < 6) {
-      setMsg('Escribe tu correo y una contraseña de al menos 6 caracteres.')
+    if (!supabase || !email.trim() || !pass) {
+      setMsg('Escribe tu correo y contraseña.')
       return
     }
     setLoading(true)
@@ -22,7 +20,7 @@ export function Login() {
       password: pass,
     })
     setLoading(false)
-    if (error) setMsg(error.message)
+    if (error) setMsg('Correo o contraseña incorrectos.')
   }
 
   return (
@@ -54,7 +52,7 @@ export function Login() {
             type="password"
             value={pass}
             onChange={(e) => setPass(e.target.value)}
-            placeholder="Mínimo 6 caracteres"
+            placeholder="Tu contraseña"
             onKeyDown={(e) => e.key === 'Enter' && submit()}
           />
         </div>

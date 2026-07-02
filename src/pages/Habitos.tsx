@@ -50,7 +50,6 @@ export function Habitos() {
   const [target, setTarget] = useState('7')
   const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>('')
   const [cue, setCue] = useState('')
-  const [reward, setReward] = useState('')
   const [subs, setSubs] = useState<string[]>([])
   const [subInput, setSubInput] = useState('')
   const [days, setDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6])
@@ -106,11 +105,10 @@ export function Habitos() {
       days: days.length === 7 ? [] : days,
       subs: subs.map((s) => ({ id: uid(), name: s })),
       cue: cue.trim(),
-      reward: reward.trim(),
+      reward: '',
     })
     setName('')
     setCue('')
-    setReward('')
     setTimeOfDay('')
     setSubs([])
     setSubInput('')
@@ -499,10 +497,6 @@ export function Habitos() {
         <div className="field">
           <label>🧭 Cuándo y dónde (intención de implementación)</label>
           <input className="input" value={cue} onChange={(e) => setCue(e.target.value)} placeholder="Ej. Después de desayunar, en mi escritorio" />
-        </div>
-        <div className="field">
-          <label>🎁 Recompensa inmediata (opcional)</label>
-          <input className="input" value={reward} onChange={(e) => setReward(e.target.value)} placeholder="Ej. Un capítulo de mi serie favorita" />
         </div>
         <button className="btn btn-primary" style={{ width: '100%' }} onClick={save}>
           <Plus size={16} /> Crear hábito

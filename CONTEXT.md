@@ -37,6 +37,10 @@ esté **conectado entre componentes**, y potenciar sus ideas añadiéndoles valo
 Comandos: `npm run dev`, `npm run build` (corre `tsc -b && vite build`).
 El proyecto está en `c:\Users\DELLPHOTO\Desktop\Proyectos\Tracker` (Windows, cmd).
 
+**Ya desplegado:** repo GitHub `salazar3148/Haver` (rama `main`) → **Netlify** con
+deploy continuo. Datos sincronizados en la nube con **Supabase** (Postgres + Auth).
+Ver sección 11 para el detalle.
+
 Reglas de TS estrictas: `noUnusedLocals`, `noUnusedParameters` activos → no dejar
 imports/variables sin usar o el build falla. Siempre correr `npm run build` al final.
 
@@ -274,14 +278,36 @@ Primitivos en `ui.tsx`: `Modal, Bar, Stat, Empty, Segmented`. Responsive con bre
 
 ---
 
-## 11. Sincronización en la nube (Supabase) — implementada, requiere claves del usuario
-- `src/lib/supabase.ts`: crea cliente solo si existen `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`. `supabaseEnabled` controla todo. **Sin claves → app 100% local (sin login), como antes.**
-- `src/store/useSync.ts`: `useSync` (status: idle/saving/saved/offline/error, email). `startSync(uid,email)`: descarga remoto (`pullRemote`, last-write-wins por `updated_at` vs marca local `vida-quest-lastmod`), se suscribe a `useStore` y sube con **debounce 1.5s** (`upload` hace `upsert` en tabla `app_state`), maneja online/offline. `pushNow`, `pullRemote(force)`, `stopSync`.
-- `App.tsx`: si `supabaseEnabled` y no hay sesión → `<Login/>`; con sesión → arranca sync y muestra Shell. Si no está habilitado, va directo a la app.
-- `SyncBadge` (en Sidebar): estado + correo + logout + ↑subir / ↓bajar.
-- Tabla: `app_state(user_id uuid PK FK auth.users, data jsonb, updated_at timestamptz)` con **RLS** (select/insert/update solo `auth.uid()=user_id`). SQL y pasos en `SUPABASE_SETUP.md`.
-- Deploy: `netlify.toml` (build `npm run build`, publish `dist`, redirect SPA → index.html). Variables `VITE_*` en Netlify. `.env` ignorado por git.
-- **El usuario aún NO ha creado el proyecto Supabase ni desplegado** (esos pasos son manuales suyos). El código está listo para activarse al poner el `.env`.
+## 11. Sincronización en la nube (Supabase) + Netlify — YA CONECTADO Y DESPLEGADO ✅
+
+Objetivo cumplido: usar la app desde celular y PC indistintamente, con todo
+sincronizado, publicada gratis en internet. Se eligió **Supabase** (Postgres + Auth
++ API en una sola pieza, consumible seguro y directo desde el navegador con la clave
+pública) por costo $0 y mínimo montaje.
+
+**Login de UN SOLO usuario (sin registro público).** Como la app es pública y tiene
+datos personales (finanzas, hábitos), requiere sesión. **No hay pantalla de registro**:
+el único usuario se crea manualmente en Supabase (Authentication → Users → Add user).
+`Login.tsx` solo permite **iniciar sesión** (email + contraseña). La sesión es
+persistente (`persistSession` + `autoRefreshToken`): se loguea una vez por dispositivo.
+
+- `src/lib/supabase.ts`: crea el cliente solo si existen `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` (`supabaseEnabled`). Sin claves, la app corre 100% local. Exporta `PERSIST_KEY = 'vida-quest-v1'`.
+- `src/store/useSync.ts`: `useSync` (status: idle/saving/saved/offline/error, email). `startSync(uid,email)`: descarga remoto (`pullRemote`, **last-write-wins** comparando `updated_at` remoto vs marca local `vida-quest-lastmod`), se suscribe a `useStore` y sube con **debounce 1.5s** (`upload` → `upsert` en tabla `app_state`), maneja eventos online/offline. También `pushNow`, `pullRemote(force)`, `stopSync`.
+- `App.tsx`: si `supabaseEnabled` y no hay sesión → `<Login/>`; con sesión → arranca sync y muestra el Shell. Sin Supabase → app directa (modo local).
+- `SyncBadge` (barra lateral): muestra conectado/sincronizando/guardado/sin conexión/error + correo + **logout** + ↑subir / ↓bajar manuales.
+- localStorage se conserva como **respaldo/offline**; cada cambio se guarda local al instante y se sube ~1.5s después. Sin internet, la app sigue 100% usable y sincroniza al reconectar.
+- **Seguridad**: el frontend solo usa la **clave pública anon** (segura de exponer). La protección real es **RLS**: cada política de `app_state` exige `auth.uid() = user_id`. La clave secreta NUNCA va al frontend.
+- **Base de datos**: tabla `app_state(user_id uuid PK FK auth.users, data jsonb, updated_at timestamptz)` con RLS activo (select/insert/update solo la propia fila). SQL en `supabase/schema.sql` (correr en Supabase SQL Editor). Guía en `SUPABASE_SETUP.md`.
+- **Hosting**: **Netlify** con **deploy continuo desde GitHub** (repo `salazar3148/Haver`, rama `main`). `netlify.toml`: build `npm run build`, publish `dist`, redirect SPA → `index.html`. Variables `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` configuradas en Netlify. `.env` en `.gitignore`.
+
+**Estado actual (funcionando):** cliente Supabase conectado y verificado; tabla
+`app_state` con RLS; usuario único creado en Supabase; login + sync probados
+(guarda local y sube/baja de Supabase); repo en GitHub con commit en `main`;
+`netlify.toml` listo. La app **ya está desplegada** y accesible por URL pública.
+
+> Nota de proyecto: el repositorio y despliegue se llaman **Haver**. Internamente la
+> marca visible en la UI sigue siendo "Vida Quest" (logo ⚔️). Si en el futuro se
+> unifica el nombre, cambiar `brand-name` en Sidebar/Login y el `<title>` de index.html.
 
 ---
 
@@ -300,7 +326,7 @@ Primitivos en `ui.tsx`: `Modal, Bar, Stat, Empty, Segmented`. Responsive con bre
 - Mini línea de tiempo de rangos congelados en Estadísticas.
 - Reflexión diaria (journaling) como cierre de día.
 - Code-splitting para reducir el bundle.
-- (Usuario) Crear proyecto Supabase + `.env` + deploy en Netlify siguiendo `SUPABASE_SETUP.md`.
+- (Opcional) Unificar el nombre de marca a "Haver" en la UI si se desea.
 
 ---
 
