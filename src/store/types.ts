@@ -112,8 +112,10 @@ export interface Quote {
 }
 
 // ===== Tablero (corcho) =====
-// Tipos de nota que se pueden fijar en el tablero, imitando un corcho real.
-export type NoteKind = 'sticky' | 'paper' | 'todo' | 'photo'
+// Tipos de nota que se pueden fijar en el tablero.
+// sticky/paper/todo/photo = tarjetas; frame = cuadro redimensionable;
+// text = solo texto; sticker = emoji decorativo escalable.
+export type NoteKind = 'sticky' | 'paper' | 'todo' | 'photo' | 'frame' | 'text' | 'sticker'
 
 export interface ChecklistItem {
   id: string
@@ -135,6 +137,8 @@ export interface BoardNote {
   y: number
   rot: number // rotación en grados
   z: number // orden de apilamiento
+  w?: number // ancho (frame) o tamaño de fuente (sticker)
+  h?: number // alto (frame)
   createdAt: number
 }
 

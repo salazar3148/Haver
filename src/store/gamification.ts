@@ -448,10 +448,31 @@ export const ACHIEVEMENTS: Achievement[] = [
   },
   {
     id: 'board-full',
-    name: 'Corcho vivo',
+    name: 'Tablero vivo',
     desc: 'Ten 10 notas fijadas en el Tablero a la vez',
     icon: '🗂️',
     check: (s) => (s.boardNotes ?? []).length >= 10,
+  },
+  {
+    id: 'board-frame',
+    name: 'Enmarcado',
+    desc: 'Crea un cuadro redimensionable en el Tablero para agrupar notas',
+    icon: '🔲',
+    check: (s) => (s.boardNotes ?? []).some((n) => n.kind === 'frame'),
+  },
+  {
+    id: 'board-text',
+    name: 'Titular',
+    desc: 'Añade una nota de solo texto (un título o encabezado) al Tablero',
+    icon: '🔤',
+    check: (s) => (s.boardNotes ?? []).some((n) => n.kind === 'text'),
+  },
+  {
+    id: 'board-sticker',
+    name: 'Decorador',
+    desc: 'Coloca un sticker/emoji decorativo en el Tablero',
+    icon: '✨',
+    check: (s) => (s.boardNotes ?? []).some((n) => n.kind === 'sticker'),
   },
 ]
 

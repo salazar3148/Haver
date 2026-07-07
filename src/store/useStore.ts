@@ -557,18 +557,22 @@ export const useStore = create<Store>()(
 
         addNote: (kind, x, y) => {
           const maxZ = get().boardNotes.reduce((m, n) => Math.max(m, n.z), 0)
+          // Cuadros y texto se ven mejor sin rotación; el resto lleva un ángulo leve
+          const noRot = kind === 'frame' || kind === 'text'
           const note: BoardNote = {
             id: uid(),
             kind,
             text: '',
-            emoji: kind === 'photo' ? '📸' : '',
-            color: kind === 'photo' ? '#ffffff' : pick(NOTE_COLORS),
+            emoji: kind === 'photo' ? '📸' : kind === 'sticker' ? '⭐' : '',
+            color: kind === 'photo' ? '#ffffff' : kind === 'text' ? '' : pick(NOTE_COLORS),
             pin: pick(PIN_COLORS),
-            items: kind === 'todo' ? [] : [],
+            items: [],
             x,
             y,
-            rot: Math.round((Math.random() - 0.5) * 8), // -4..+4 grados
+            rot: noRot ? 0 : Math.round((Math.random() - 0.5) * 8), // -4..+4 grados
             z: maxZ + 1,
+            w: kind === 'frame' ? 300 : kind === 'sticker' ? 76 : undefined,
+            h: kind === 'frame' ? 200 : undefined,
             createdAt: Date.now(),
           }
           set((st) => ({ boardNotes: [...st.boardNotes, note] }))
@@ -658,7 +662,7 @@ export const useStore = create<Store>()(
     },
     {
       name: 'vida-quest-v1',
-      version: 15,
+      version: 16,
       migrate: (persisted: any, version: number) => {
         if (!persisted) return persisted
         const s = persisted
@@ -731,7 +735,11 @@ export const useStore = create<Store>()(
           })
         }
         if (version < 15) {
-          // Nuevo módulo "Tablero" (corcho): notas fijadas con posición libre.
+          // Nuevo módulo "Tablero": notas fijadas con posición libre.
+          s.boardNotes = s.boardNotes ?? []
+        }
+        if (version < 16) {
+          // Nuevos tipos de nota (frame/text/sticker) con w/h opcionales.
           s.boardNotes = s.boardNotes ?? []
         }
         return s

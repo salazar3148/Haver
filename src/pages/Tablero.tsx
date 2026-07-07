@@ -4,6 +4,9 @@ import {
   FileText,
   ListChecks,
   Image as ImageIcon,
+  Square,
+  Type,
+  Smile,
   Trash2,
   Pencil,
   Palette,
@@ -23,6 +26,10 @@ import { XpWidget } from '../App'
 // Colores base: se ven pastel sobre el tablero día y como neón sobre el nocturno
 const NOTE_COLORS = ['#ffd93d', '#ff5c8a', '#3ec9ff', '#4de08a', '#ff8a3d', '#b57bff']
 const PHOTO_EMOJIS = ['📸', '🌅', '🏔️', '🎯', '💡', '❤️', '🔥', '⭐', '🎸', '🐉', '🌱', '🏆']
+const STICKER_EMOJIS = [
+  '⭐', '✨', '🌟', '🔥', '❤️', '📌', '🧷', '📎', '🎯', '✅', '💡', '🚀',
+  '🌸', '🍀', '☀️', '🌙', '⚡', '👑', '🎉', '🏷️', '💬', '🎗️', '🖇️', '🌈',
+]
 
 // Colores tomados del tema activo de la app (para que las notas "combinen"
 // con el tema seleccionado). Se leen de las CSS vars en vivo.
@@ -39,8 +46,12 @@ const KIND_META: Record<NoteKind, { label: string; icon: typeof StickyNote }> = 
   sticky: { label: 'Nota', icon: StickyNote },
   paper: { label: 'Papel', icon: FileText },
   todo: { label: 'Checklist', icon: ListChecks },
+  text: { label: 'Texto', icon: Type },
+  frame: { label: 'Cuadro', icon: Square },
   photo: { label: 'Foto', icon: ImageIcon },
+  sticker: { label: 'Sticker', icon: Smile },
 }
+const TOOLBAR_KINDS: NoteKind[] = ['sticky', 'paper', 'todo', 'text', 'frame', 'photo', 'sticker']
 
 // Lienzo grande y "extensible" que se recorre con paneo/zoom (tipo Excalidraw)
 const CANVAS_W = 4000
@@ -79,33 +90,32 @@ export function Tablero() {
   const panRef = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null)
   const pinchRef = useRef<{ dist: number; zoom: number; mx: number; my: number; ox: number; oy: number } | null>(null)
 
-  const create = (kind: NoteKind) => {
-    const vp = viewportRef.current
-    const rect = vp?.getBoundingClientRect()
+  // centro del viewport → coordenadas del lienzo
+  const centerCanvas = (offX = 90, offY = 70) => {
+    const rect = viewportRef.current?.getBoundingClientRect()
     const w = rect?.width ?? 800
     const h = rect?.height ?? 600
-    // centro del viewport → coordenadas del lienzo, con leve desorden
     const jitter = () => (Math.random() - 0.5) * 90
-    const cx = (w / 2 - view.x) / view.zoom - 90 + jitter()
-    const cy = (h / 2 - view.y) / view.zoom - 70 + jitter()
-    const x = Math.max(0, Math.min(CANVAS_W - 200, Math.round(cx)))
-    const y = Math.max(0, Math.min(CANVAS_H - 160, Math.round(cy)))
-    addNote(kind, x, y)
+    return {
+      x: Math.max(0, Math.min(CANVAS_W - 240, Math.round((w / 2 - view.x) / view.zoom - offX + jitter()))),
+      y: Math.max(0, Math.min(CANVAS_H - 160, Math.round((h / 2 - view.y) / view.zoom - offY + jitter()))),
+    }
   }
 
-  // Doble clic sobre el lienzo vacío: crea una nota adhesiva justo ahí y la
-  // deja lista para escribir.
+  const create = (kind: NoteKind) => {
+    const { x, y } = centerCanvas()
+    const id = addNote(kind, x, y)
+    if (kind === 'sticky' || kind === 'text') setAutoEditId(id)
+  }
+
+  // Doble clic sobre el lienzo vacío: crea una nota adhesiva ahí, lista para escribir.
   const onBoardDoubleClick = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('.note, .board-controls, .board-empty')) return
-    const vp = viewportRef.current
-    const rect = vp?.getBoundingClientRect()
+    const rect = viewportRef.current?.getBoundingClientRect()
     if (!rect) return
-    const cx = (e.clientX - rect.left - view.x) / view.zoom - 90
-    const cy = (e.clientY - rect.top - view.y) / view.zoom - 60
-    const x = Math.max(0, Math.min(CANVAS_W - 200, Math.round(cx)))
-    const y = Math.max(0, Math.min(CANVAS_H - 160, Math.round(cy)))
-    const id = addNote('sticky', x, y)
-    setAutoEditId(id)
+    const x = Math.max(0, Math.min(CANVAS_W - 200, Math.round((e.clientX - rect.left - view.x) / view.zoom - 90)))
+    const y = Math.max(0, Math.min(CANVAS_H - 160, Math.round((e.clientY - rect.top - view.y) / view.zoom - 60)))
+    setAutoEditId(addNote('sticky', x, y))
   }
 
   // ---- Paneo con 1 puntero / pinch con 2 ----
@@ -168,21 +178,16 @@ export function Tablero() {
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
       const rect = vp.getBoundingClientRect()
-      if (e.ctrlKey || Math.abs(e.deltaY) > 0) {
-        const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12
-        zoomAt(e.clientX - rect.left, e.clientY - rect.top, factor)
-      }
+      const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12
+      zoomAt(e.clientX - rect.left, e.clientY - rect.top, factor)
     }
     vp.addEventListener('wheel', onWheel, { passive: false })
     return () => vp.removeEventListener('wheel', onWheel)
   }, [zoomAt])
 
   const zoomBtn = (dir: 1 | -1) => {
-    const vp = viewportRef.current
-    const rect = vp?.getBoundingClientRect()
-    const mx = (rect?.width ?? 800) / 2
-    const my = (rect?.height ?? 600) / 2
-    zoomAt(mx, my, dir > 0 ? 1.2 : 1 / 1.2)
+    const rect = viewportRef.current?.getBoundingClientRect()
+    zoomAt((rect?.width ?? 800) / 2, (rect?.height ?? 600) / 2, dir > 0 ? 1.2 : 1 / 1.2)
   }
 
   const resetView = () => setView({ x: 40, y: 40, zoom: 1 })
@@ -193,15 +198,15 @@ export function Tablero() {
         <div>
           <div className="page-title">Tablero</div>
           <div className="page-sub">
-            Un lienzo infinito para tus notas y pendientes. Arrastra las notas, desplázate por el
-            fondo y usa la rueda o dos dedos para acercar.
+            Un lienzo infinito para tus notas, listas y recuerdos. Arrastra, redimensiona los
+            cuadros y usa la rueda o dos dedos para acercar.
           </div>
         </div>
         <XpWidget />
       </div>
 
       <div className="board-toolbar">
-        {(Object.keys(KIND_META) as NoteKind[]).map((k) => {
+        {TOOLBAR_KINDS.map((k) => {
           const Icon = KIND_META[k].icon
           return (
             <button key={k} className="btn btn-ghost" onClick={() => create(k)}>
@@ -266,7 +271,8 @@ export function Tablero() {
           <div className="board-empty">
             <div className="board-empty-emoji">🧲</div>
             <div className="board-empty-text">
-              Tu tablero está vacío. Crea una nota con los botones de arriba.
+              Tu tablero está vacío. Crea algo con los botones de arriba, o haz doble clic aquí
+              para una nota rápida.
             </div>
           </div>
         )}
@@ -317,6 +323,7 @@ function NoteCard({
   const [dragging, setDragging] = useState(false)
   const [editing, setEditing] = useState(!!autoEdit)
   const [showColors, setShowColors] = useState(false)
+  const [showEmojis, setShowEmojis] = useState(false)
   const [draft, setDraft] = useState(note.text)
   const [newItem, setNewItem] = useState('')
 
@@ -325,7 +332,12 @@ function NoteCard({
   const startDrag = (e: React.PointerEvent) => {
     // Evita que el gesto llegue al lienzo (paneo). Los controles internos no arrastran.
     e.stopPropagation()
-    if ((e.target as HTMLElement).closest('.note-ui, textarea, input, .chk-row, .chk-add, button, .note-colors')) return
+    if (
+      (e.target as HTMLElement).closest(
+        '.note-ui, textarea, input, .chk-row, .chk-add, button, .note-colors, .note-emojis, .resize-handle'
+      )
+    )
+      return
     e.preventDefault()
     onFront(note.id)
     const el = ref.current
@@ -356,44 +368,91 @@ function NoteCard({
     window.addEventListener('pointerup', up)
   }
 
+  // Redimensionar (cuadro: ancho+alto / sticker: tamaño de fuente)
+  const startResize = (e: React.PointerEvent) => {
+    e.stopPropagation()
+    e.preventDefault()
+    onFront(note.id)
+    const el = ref.current
+    if (!el) return
+    const isSticker = note.kind === 'sticker'
+    const ow = note.w ?? el.offsetWidth
+    const oh = note.h ?? el.offsetHeight
+    const startX = e.clientX
+    const startY = e.clientY
+    let nw = ow
+    let nh = oh
+    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+    const move = (ev: PointerEvent) => {
+      if (isSticker) {
+        nw = Math.max(28, Math.min(260, ow + (ev.clientX - startX) / zoom))
+        el.style.fontSize = `${nw}px`
+      } else {
+        nw = Math.max(120, Math.min(1400, ow + (ev.clientX - startX) / zoom))
+        nh = Math.max(80, Math.min(1000, oh + (ev.clientY - startY) / zoom))
+        el.style.width = `${nw}px`
+        el.style.height = `${nh}px`
+      }
+    }
+    const up = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      onUpdate(note.id, isSticker ? { w: Math.round(nw) } : { w: Math.round(nw), h: Math.round(nh) })
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+  }
+
   const commitText = () => {
     setEditing(false)
     if (draft !== note.text) onUpdate(note.id, { text: draft })
   }
 
-  const cycleEmoji = () => {
-    const i = PHOTO_EMOJIS.indexOf(note.emoji)
-    onUpdate(note.id, { emoji: PHOTO_EMOJIS[(i + 1) % PHOTO_EMOJIS.length] })
-  }
-
   const placeholder =
-    note.kind === 'photo' ? 'Escribe un pie…' : note.kind === 'todo' ? 'Título…' : 'Escribe aquí…'
+    note.kind === 'photo' ? 'Escribe un pie…' : note.kind === 'frame' ? 'Etiqueta…' : 'Escribe aquí…'
+
+  const showPin = note.kind === 'paper' || note.kind === 'todo' || note.kind === 'photo'
+  const canColor = note.kind !== 'photo' && note.kind !== 'sticker'
+  const canResize = note.kind === 'frame' || note.kind === 'sticker'
+
+  // Estilo dinámico (posición, apilamiento, tamaño, color propio)
+  const style: React.CSSProperties = {
+    left: note.x,
+    top: note.y,
+    zIndex: note.z,
+    // @ts-expect-error CSS vars
+    '--rot': `${note.rot}deg`,
+    '--paper': note.color || '#8fd0ff',
+    '--pin': note.pin,
+  }
+  if (note.kind === 'frame') {
+    style.width = note.w ?? 300
+    style.height = note.h ?? 200
+  }
+  if (note.kind === 'sticker') style.fontSize = `${note.w ?? 76}px`
+  if (note.kind === 'text' && note.color) style.color = note.color
 
   return (
     <div
       ref={ref}
       className={`note note-${note.kind}${dragging ? ' dragging' : ''}`}
-      style={{
-        left: note.x,
-        top: note.y,
-        zIndex: note.z,
-        // @ts-expect-error CSS vars
-        '--rot': `${note.rot}deg`,
-        '--paper': note.color,
-        '--pin': note.pin,
-      }}
+      style={style}
       onPointerDown={startDrag}
-      onDoubleClick={() => note.kind !== 'todo' && setEditing(true)}
+      onDoubleClick={() => note.kind !== 'todo' && note.kind !== 'sticker' && setEditing(true)}
     >
-      <span className="pin" />
+      {showPin && <span className="pin" />}
 
       <div className="note-ui">
-        {note.kind !== 'todo' && (
+        {note.kind === 'sticker' ? (
+          <button className="note-ui-btn" title="Cambiar emoji" onClick={() => setShowEmojis((v) => !v)}>
+            <Smile size={13} />
+          </button>
+        ) : note.kind !== 'todo' ? (
           <button className="note-ui-btn" title="Editar" onClick={() => setEditing(true)}>
             <Pencil size={13} />
           </button>
-        )}
-        {note.kind !== 'photo' && (
+        ) : null}
+        {canColor && (
           <button className="note-ui-btn" title="Color" onClick={() => setShowColors((v) => !v)}>
             <Palette size={13} />
           </button>
@@ -437,104 +496,159 @@ function NoteCard({
         </div>
       )}
 
-      {note.kind === 'photo' ? (
-        <>
-          <div
-            className="photo-pic"
-            onDoubleClick={(e) => {
-              e.stopPropagation()
-              cycleEmoji()
-            }}
-            title="Doble clic: cambiar imagen"
-          >
-            <span>{note.emoji || '📸'}</span>
-          </div>
-          {editing ? (
-            <textarea
-              className="note-input photo-cap"
-              autoFocus
-              value={draft}
-              placeholder={placeholder}
-              onChange={(e) => setDraft(e.target.value)}
-              onBlur={commitText}
-            />
-          ) : (
-            <div className="photo-cap-view" onDoubleClick={() => setEditing(true)}>
-              {note.text || <span className="ph">Doble clic para el pie…</span>}
-            </div>
-          )}
-        </>
-      ) : note.kind === 'todo' ? (
-        <div className="todo-body">
-          {editing ? (
-            <input
-              className="note-input todo-title"
-              autoFocus
-              value={draft}
-              placeholder="Título…"
-              onChange={(e) => setDraft(e.target.value)}
-              onBlur={commitText}
-              onKeyDown={(e) => e.key === 'Enter' && commitText()}
-            />
-          ) : (
-            <div className="todo-title-view" onDoubleClick={() => setEditing(true)}>
-              {note.text || <span className="ph">Doble clic: título</span>}
-            </div>
-          )}
-          <div className="chk-list">
-            {note.items.map((it) => (
-              <div className="chk-row" key={it.id}>
-                <button
-                  className={`chk${it.done ? ' on' : ''}`}
-                  onClick={() => onToggleItem(note.id, it.id)}
-                >
-                  {it.done ? '✓' : ''}
-                </button>
-                <span className={it.done ? 'done' : ''}>{it.text}</span>
-                <button className="chk-x" onClick={() => onRemoveItem(note.id, it.id)}>
-                  <X size={11} />
-                </button>
-              </div>
-            ))}
-          </div>
-          <div className="chk-add">
-            <input
-              value={newItem}
-              placeholder="Agregar ítem…"
-              onChange={(e) => setNewItem(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && newItem.trim()) {
-                  onAddItem(note.id, newItem)
-                  setNewItem('')
-                }
-              }}
-            />
+      {showEmojis && (
+        <div className="note-emojis" onPointerDown={(e) => e.stopPropagation()}>
+          {(note.kind === 'photo' ? PHOTO_EMOJIS : STICKER_EMOJIS).map((em) => (
             <button
+              key={em}
               onClick={() => {
-                if (newItem.trim()) {
-                  onAddItem(note.id, newItem)
-                  setNewItem('')
-                }
+                onUpdate(note.id, { emoji: em })
+                setShowEmojis(false)
               }}
             >
-              <Plus size={13} />
+              {em}
             </button>
-          </div>
-        </div>
-      ) : editing ? (
-        <textarea
-          className="note-input"
-          autoFocus
-          value={draft}
-          placeholder={placeholder}
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={commitText}
-        />
-      ) : (
-        <div className="note-text" onDoubleClick={() => setEditing(true)}>
-          {note.text || <span className="ph">Doble clic para escribir…</span>}
+          ))}
         </div>
       )}
+
+      {renderBody()}
+
+      {canResize && <span className="resize-handle" onPointerDown={startResize} />}
     </div>
   )
+
+  function renderBody() {
+    switch (note.kind) {
+      case 'sticker':
+        return <div className="sticker-emoji">{note.emoji || '⭐'}</div>
+
+      case 'text':
+        return editing ? (
+          <textarea
+            className="note-input text-input"
+            autoFocus
+            value={draft}
+            placeholder="Escribe…"
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commitText}
+          />
+        ) : (
+          <div className="text-view" onDoubleClick={() => setEditing(true)}>
+            {note.text || <span className="ph">Doble clic para escribir…</span>}
+          </div>
+        )
+
+      case 'frame':
+        return (
+          <div className="frame-bar" onDoubleClick={() => setEditing(true)} title="Arrastra para mover el cuadro">
+            {editing ? (
+              <input
+                className="note-input frame-label"
+                autoFocus
+                value={draft}
+                placeholder={placeholder}
+                onChange={(e) => setDraft(e.target.value)}
+                onBlur={commitText}
+                onKeyDown={(e) => e.key === 'Enter' && commitText()}
+              />
+            ) : (
+              <span className="frame-label-view">{note.text || 'Cuadro'}</span>
+            )}
+          </div>
+        )
+
+      case 'photo':
+        return (
+          <>
+            <div
+              className="photo-pic"
+              onDoubleClick={(e) => {
+                e.stopPropagation()
+                setShowEmojis(true)
+              }}
+              title="Doble clic: cambiar imagen"
+            >
+              <span>{note.emoji || '📸'}</span>
+            </div>
+            {editing ? (
+              <textarea
+                className="note-input photo-cap"
+                autoFocus
+                value={draft}
+                placeholder={placeholder}
+                onChange={(e) => setDraft(e.target.value)}
+                onBlur={commitText}
+              />
+            ) : (
+              <div className="photo-cap-view" onDoubleClick={() => setEditing(true)}>
+                {note.text || <span className="ph">Doble clic para el pie…</span>}
+              </div>
+            )}
+          </>
+        )
+
+      case 'todo':
+        return (
+          <div className="todo-body">
+            <div className="chk-list">
+              {note.items.map((it) => (
+                <div className="chk-row" key={it.id}>
+                  <button
+                    className={`chk${it.done ? ' on' : ''}`}
+                    onClick={() => onToggleItem(note.id, it.id)}
+                  >
+                    {it.done ? '✓' : ''}
+                  </button>
+                  <span className={it.done ? 'done' : ''}>{it.text}</span>
+                  <button className="chk-x" onClick={() => onRemoveItem(note.id, it.id)}>
+                    <X size={11} />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div className="chk-add">
+              <input
+                value={newItem}
+                placeholder="Agregar ítem…"
+                onChange={(e) => setNewItem(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && newItem.trim()) {
+                    onAddItem(note.id, newItem)
+                    setNewItem('')
+                  }
+                }}
+              />
+              <button
+                onClick={() => {
+                  if (newItem.trim()) {
+                    onAddItem(note.id, newItem)
+                    setNewItem('')
+                  }
+                }}
+              >
+                <Plus size={13} />
+              </button>
+            </div>
+          </div>
+        )
+
+      default:
+        // sticky y paper
+        return editing ? (
+          <textarea
+            className="note-input"
+            autoFocus
+            value={draft}
+            placeholder={placeholder}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commitText}
+          />
+        ) : (
+          <div className="note-text" onDoubleClick={() => setEditing(true)}>
+            {note.text || <span className="ph">Doble clic para escribir…</span>}
+          </div>
+        )
+    }
+  }
 }

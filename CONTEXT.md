@@ -238,10 +238,11 @@ v15 añadió `boardNotes: BoardNote[]` (módulo "Tablero"/corcho).
 - **Niveles**: `xpForLevel(n)=round(100*n^1.5)` acumulativo; `getLevelInfo(xp)` → {level,current,needed,progress,totalXp}.
 - **Rangos** (`rankName`): Novato→Aprendiz(3)→Aventurero(7)→Experto(12)→Veterano(20)→Maestro(30)→Leyenda(40).
 - **Racha** (`computeStreak`): días consecutivos con algún hábito; cuenta `h.log`.
-- **ACHIEVEMENTS**: 47 logros con `check(state)` (hábitos, rachas, finanzas, deudas, metas, enfoque, tareas, intenciones, tropiezos, árbol de metas, presupuesto, tasa de ahorro, planificación, consumibles, metas financieras, calendario/objetivos, congelar días, lista de compras, sub-hábitos, regla de 2 minutos, matriz de Eisenhower, tema/acento, sync en la nube, recursos web, citas, **tablero/corcho**). Los 5 del Tablero:
+- **ACHIEVEMENTS**: 50 logros con `check(state)` (hábitos, rachas, finanzas, deudas, metas, enfoque, tareas, intenciones, tropiezos, árbol de metas, presupuesto, tasa de ahorro, planificación, consumibles, metas financieras, calendario/objetivos, congelar días, lista de compras, sub-hábitos, regla de 2 minutos, matriz de Eisenhower, tema/acento, sync en la nube, recursos web, citas, **tablero/corcho**). Los 5 del Tablero:
 `board-first` (fija tu primera nota 📌), `board-todo` (nota de pendientes 🧷),
 `board-todo-done` (completa un pendiente del tablero ✔️), `board-photo` (nota tipo foto/polaroid 📸),
-`board-full` (10 notas fijadas a la vez 🗂️). Ver **regla de oro** en la sección 6.1: toda función nueva necesita su logro.
+`board-full` (10 notas fijadas a la vez 🗂️), `board-frame` (crea un cuadro 🔲), `board-text` (nota de
+solo texto 🔤), `board-sticker` (emoji decorativo ✨). Ver **regla de oro** en la sección 6.1: toda función nueva necesita su logro.
 - Subir de nivel y desbloquear logro disparan **confeti** (fx.ts) + toast.
 
 ### 6.1 REGLA DE ORO: toda funcionalidad tiene su logro ⚠️
@@ -347,10 +348,18 @@ datos (sección 12).
     `setBoardTheme`), aplicado como `data-board` en el viewport. Día = fondo `#f7f8fa`; Noche =
     fondo `#0b0d12`; cambian color de la rejilla y, en noche, las notas llevan un halo claro
     para despegarse del negro. Interruptor Día/Noche (`.board-theme-toggle`) en la barra superior.
-  - **4 tipos de nota** (`BoardNote.kind`): **sticky** (post-it, esquina doblada), **paper**
-    (papel de cuaderno con líneas y margen rojo + chincheta), **todo** (**checklist**: título +
-    ítems con palomita ✓ que se agregan/tachan/borran — acciones `addNoteItem/toggleNoteItem/
-    removeNoteItem`) y **photo** (polaroid: "imagen" = emoji que cicla con doble clic + pie).
+  - **7 tipos de nota** (`BoardNote.kind`): **sticky** (post-it, esquina doblada), **paper**
+    (papel de cuaderno con líneas y margen rojo + chincheta), **todo** (**checklist** SIN título:
+    solo ítems con palomita ✓ que se agregan/tachan/borran — acciones `addNoteItem/toggleNoteItem/
+    removeNoteItem`), **photo** (polaroid: "imagen" = emoji elegido de un picker + pie), **text**
+    (solo texto sobre el lienzo, sin tarjeta; color/tamaño legible según día/noche), **frame**
+    (**cuadro redimensionable** a lo ancho y alto para agrupar/decorar: su interior es
+    "atravesable" `pointer-events:none` para no bloquear las notas de detrás, se mueve desde una
+    pestaña superior `.frame-bar` y se redimensiona con el asa `.resize-handle`) y **sticker**
+    (emoji decorativo escalable con el asa; emoji elegido de un picker `.note-emojis`).
+  - `BoardNote.w/h` (opcionales) guardan el tamaño del cuadro (w+h) o el tamaño de fuente del
+    sticker (w). El **asa de redimensionado** aparece en cuadro y sticker (`canResize`). Crear
+    Nota o Texto entra directo en edición (`autoEditId`). Persist subió a **v16** (w/h opcionales).
   - **Estilo de las notas según el tablero**: en modo DÍA se ven como papel pastel; en modo
     NOCHE adoptan un look **neón/glass** (fondo oscuro translúcido + borde y glow que toman el
     color propio de la nota `--paper` vía `color-mix`, texto con leve resplandor, chincheta y

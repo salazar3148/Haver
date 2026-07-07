@@ -2863,3 +2863,181 @@ h3 {
     0 0 0 1px color-mix(in srgb, var(--paper) 40%, transparent) inset,
     0 2px 6px rgba(0, 0, 0, 0.5) inset;
 }
+
+/* =========================================================================
+   TABLERO — componentes extra: Texto suelto, Cuadro redimensionable, Sticker
+   ========================================================================= */
+
+/* ---- Texto suelto (solo texto, sin tarjeta) ---- */
+.note-text-only {
+  width: 240px;
+  min-height: 0;
+  padding: 6px 8px;
+  background: transparent;
+}
+.text-view,
+.text-input {
+  font-family: 'Lora', serif;
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.35;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.text-input {
+  min-height: 40px;
+}
+.board-viewport[data-board='light'] .note-text-only {
+  color: #1f2430;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.4);
+}
+.board-viewport[data-board='dark'] .note-text-only {
+  color: #eef2ff;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+}
+.note-text-only .text-input {
+  color: inherit;
+  background: rgba(127, 127, 127, 0.14);
+}
+
+/* ---- Cuadro / marco redimensionable ---- */
+/* El cuadro NO captura eventos en su interior (para poder agrupar notas por
+   encima/detrás); solo su pestaña, la barra de acciones y el asa son
+   interactivas. */
+.note-frame {
+  min-height: 0;
+  padding: 0;
+  border-radius: 14px;
+  border: 2px solid color-mix(in srgb, var(--paper) 75%, transparent);
+  background: color-mix(in srgb, var(--paper) 9%, transparent);
+  box-shadow: 0 8px 22px -14px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+.note-frame .frame-bar,
+.note-frame .note-ui,
+.note-frame .note-colors,
+.note-frame .resize-handle {
+  pointer-events: auto;
+}
+/* Barra/pestaña superior: el asa para mover el cuadro */
+.frame-bar {
+  position: absolute;
+  top: -13px;
+  left: 12px;
+  display: inline-flex;
+  align-items: center;
+  max-width: calc(100% - 40px);
+  padding: 3px 12px;
+  border-radius: 9px;
+  cursor: grab;
+  background: color-mix(in srgb, var(--paper) 30%, var(--panel));
+  border: 1px solid color-mix(in srgb, var(--paper) 55%, transparent);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+}
+.frame-label-view,
+.frame-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.board-viewport[data-board='light'] .frame-bar {
+  color: #2a2f3a;
+}
+.board-viewport[data-board='dark'] .frame-bar {
+  color: #e8ecf7;
+}
+.frame-label.note-input {
+  background: transparent;
+  min-height: 0;
+  width: 120px;
+  padding: 0;
+  color: inherit;
+}
+/* Cuadro: controles siempre visibles (su cuerpo no dispara hover) */
+.note-frame .note-ui,
+.note-frame .resize-handle {
+  opacity: 1;
+  transform: none;
+}
+
+/* ---- Sticker / emoji decorativo ---- */
+.note-sticker {
+  min-height: 0;
+  padding: 2px;
+  line-height: 1;
+  background: transparent;
+  filter: drop-shadow(0 5px 7px rgba(0, 0, 0, 0.32));
+}
+.sticker-emoji {
+  line-height: 1;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* ---- Asa de redimensionado (esquina inferior derecha) ---- */
+.resize-handle {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  background: var(--panel);
+  border: 1px solid var(--border-strong);
+  cursor: nwse-resize;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 5;
+}
+.resize-handle::after {
+  content: '';
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 6px;
+  height: 6px;
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
+}
+.note:hover .resize-handle {
+  opacity: 1;
+}
+.note-sticker .resize-handle {
+  right: 0;
+  bottom: 0;
+}
+
+/* ---- Selector de emojis (stickers / foto) ---- */
+.note-emojis {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 3px;
+  padding: 8px;
+  width: 236px;
+  background: rgba(18, 18, 22, 0.96);
+  border-radius: 12px;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.55);
+  z-index: 6;
+}
+.note-emojis button {
+  background: transparent;
+  border: none;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 7px;
+  padding: 4px 0;
+}
+.note-emojis button:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
