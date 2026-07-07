@@ -224,12 +224,17 @@ h3 {
   display: grid;
   grid-template-columns: 264px 1fr;
   min-height: 100vh;
+  transition: grid-template-columns 0.22s ease;
+}
+.app.sidebar-collapsed {
+  grid-template-columns: 76px 1fr;
 }
 
 .sidebar {
   position: sticky;
   top: 0;
   height: 100vh;
+  width: 264px;
   padding: 24px 16px 20px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.008));
   border-right: 1px solid var(--border);
@@ -237,6 +242,50 @@ h3 {
   flex-direction: column;
   gap: 8px;
   backdrop-filter: blur(12px);
+  transition: width 0.22s ease, padding 0.22s ease;
+  overflow: hidden;
+}
+.sidebar.collapsed {
+  width: 76px;
+  padding: 24px 12px 20px;
+}
+
+/* Botón para deslizar/contraer la barra lateral */
+.sidebar-collapse-btn {
+  position: absolute;
+  top: 26px;
+  right: -12px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  background: var(--panel);
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  z-index: 5;
+  box-shadow: var(--shadow);
+  transition: color 0.15s, background 0.15s;
+}
+.sidebar-collapse-btn:hover {
+  color: var(--text);
+  background: var(--panel-hover);
+}
+.sidebar.collapsed .brand {
+  justify-content: center;
+  padding: 6px 0 20px;
+}
+.sidebar.collapsed .nav-item {
+  justify-content: center;
+  padding: 11px;
+  gap: 0;
+}
+.sidebar.collapsed .theme-btn {
+  justify-content: center;
+}
+.sidebar.collapsed .mini-level {
+  justify-content: center;
 }
 
 .brand {
@@ -1132,18 +1181,24 @@ h3 {
 }
 
 @media (max-width: 900px) {
-  .app {
+  .app,
+  .app.sidebar-collapsed {
     grid-template-columns: 1fr;
   }
-  .sidebar {
+  .sidebar,
+  .sidebar.collapsed {
     position: static;
     height: auto;
+    width: auto;
     flex-direction: row;
     align-items: center;
     overflow-x: auto;
     border-right: none;
     border-bottom: 1px solid var(--border);
     padding: 12px;
+  }
+  .sidebar-collapse-btn {
+    display: none;
   }
   .nav {
     flex-direction: row;
@@ -2180,6 +2235,13 @@ h3 {
   color: var(--text);
   border-color: var(--border-strong);
 }
+.sync-badge.collapsed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 4px;
+}
 .auth-loading {
   min-height: 100vh;
   display: grid;
@@ -2289,6 +2351,11 @@ h3 {
 }
 .board-viewport:active {
   cursor: grabbing;
+}
+.board-viewport:fullscreen {
+  height: 100vh;
+  border-radius: 0;
+  border: none;
 }
 /* Tema DÍA (blanco) */
 .board-viewport[data-board='light'] {
@@ -2491,9 +2558,10 @@ h3 {
   background: rgba(220, 80, 80, 0.45);
 }
 
-/* ---- Nota de pendientes ---- */
+/* ---- Nota de pendientes (checklist), redimensionable a lo ancho y alto ---- */
 .note-todo {
   width: 200px;
+  min-height: 0;
   background: #fffdf5;
   border-radius: 3px;
   box-shadow:
@@ -2501,9 +2569,15 @@ h3 {
     0 12px 22px -10px rgba(0, 0, 0, 0.6);
   padding: 20px 14px 14px;
   cursor: grab;
+  display: flex;
+  flex-direction: column;
 }
 .note-todo .todo-body {
   font-family: 'Inter', sans-serif;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
 }
 .todo-title,
 .todo-title-view {
@@ -2522,6 +2596,9 @@ h3 {
   flex-direction: column;
   gap: 5px;
   margin-bottom: 8px;
+  flex: 1;
+  min-height: 20px;
+  overflow-y: auto;
 }
 .chk-row {
   display: flex;
@@ -2598,6 +2675,12 @@ h3 {
   color: #2a2a2a;
   outline: none;
   font-family: 'Inter', sans-serif;
+  user-select: text;
+  cursor: text;
+  caret-color: currentColor;
+}
+.board-viewport[data-board='dark'] .chk-add input {
+  caret-color: #eef2ff;
 }
 .chk-add button {
   flex-shrink: 0;
@@ -2664,12 +2747,18 @@ h3 {
 }
 
 /* Entradas de edición inline */
+/* El contenedor `.note` tiene user-select:none (para no seleccionar texto al
+   arrastrar); hay que restaurarlo explícitamente en los campos editables o el
+   cursor de texto (caret) no parpadea en varios navegadores. */
 .note-input {
   width: 100%;
   border: none;
   background: rgba(255, 255, 255, 0.35);
   outline: none;
   resize: none;
+  user-select: text;
+  cursor: text;
+  caret-color: currentColor;
   font-family: 'Lora', serif;
   font-size: 15px;
   font-weight: 500;
@@ -2919,6 +3008,7 @@ h3 {
 }
 .text-input {
   min-height: 40px;
+  caret-color: currentColor;
 }
 .board-viewport[data-board='light'] .note-text-only {
   color: #1f2430;
@@ -2978,6 +3068,9 @@ h3 {
   background: transparent;
   outline: none;
   color: inherit;
+  user-select: text;
+  cursor: text;
+  caret-color: currentColor;
 }
 /* Cuerpo de texto (contenido principal del cuadro) */
 .frame-text,
@@ -2999,6 +3092,9 @@ h3 {
   resize: none;
   color: inherit;
   width: 100%;
+  user-select: text;
+  cursor: text;
+  caret-color: currentColor;
 }
 /* Cuadro en modo noche */
 .board-viewport[data-board='dark'] .note-frame {
@@ -3059,6 +3155,9 @@ h3 {
 .note-sticker .resize-handle {
   right: 0;
   bottom: 0;
+}
+.note-todo .resize-handle {
+  cursor: nwse-resize;
 }
 
 /* ---- Selector de emojis (stickers / foto) ---- */

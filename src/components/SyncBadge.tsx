@@ -2,7 +2,7 @@ import { Cloud, CloudOff, Check, Loader2, AlertTriangle, LogOut, ArrowUp, ArrowD
 import { supabase, supabaseEnabled } from '../lib/supabase'
 import { useSync, pushNow, pullRemote, stopSync } from '../store/useSync'
 
-export function SyncBadge() {
+export function SyncBadge({ collapsed }: { collapsed?: boolean }) {
   const { status, email } = useSync()
   if (!supabaseEnabled) return null
 
@@ -17,6 +17,19 @@ export function SyncBadge() {
   const logout = async () => {
     await supabase?.auth.signOut()
     stopSync()
+  }
+
+  if (collapsed) {
+    return (
+      <div className="sync-badge collapsed" title={`${meta.text} · ${email ?? 'Cuenta'}`}>
+        <button className="sync-mini" style={{ color: meta.color }} onClick={() => pushNow()}>
+          {meta.icon}
+        </button>
+        <button className="sync-mini" title="Cerrar sesión" onClick={logout}>
+          <LogOut size={13} />
+        </button>
+      </div>
+    )
   }
 
   return (

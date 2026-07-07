@@ -116,8 +116,9 @@ export default function App() {
 
 function Shell({ picker, setPicker, effects }: { picker: boolean; setPicker: (v: boolean) => void; effects: boolean }) {
   const location = useLocation()
+  const sidebarCollapsed = useUi((s) => s.sidebarCollapsed)
   return (
-    <div className="app">
+    <div className={`app${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
       {effects && (
         <div className="aurora">
           <div className="aurora-3" />

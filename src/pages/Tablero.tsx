@@ -18,6 +18,7 @@ import {
   ZoomIn,
   ZoomOut,
   Maximize,
+  Minimize,
 } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { useUi } from '../store/useUi'
@@ -201,6 +202,20 @@ export function Tablero() {
 
   const resetView = () => setView({ x: 40, y: 40, zoom: 1 })
 
+  // Pantalla completa real (Fullscreen API) sobre el viewport del tablero
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  useEffect(() => {
+    const onChange = () => setIsFullscreen(!!document.fullscreenElement)
+    document.addEventListener('fullscreenchange', onChange)
+    return () => document.removeEventListener('fullscreenchange', onChange)
+  }, [])
+  const toggleFullscreen = () => {
+    const vp = viewportRef.current
+    if (!vp) return
+    if (document.fullscreenElement) document.exitFullscreen()
+    else vp.requestFullscreen()
+  }
+
   return (
     <>
       <div className="page-head">
@@ -296,8 +311,8 @@ export function Tablero() {
           <button onClick={() => zoomBtn(1)} title="Acercar">
             <ZoomIn size={16} />
           </button>
-          <button onClick={resetView} title="Centrar">
-            <Maximize size={16} />
+          <button onClick={toggleFullscreen} title={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}>
+            {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
           </button>
         </div>
       </div>
@@ -355,6 +370,7 @@ function NoteCard({
     )
       return
     e.preventDefault()
+    const wasSelected = !!selected
     onFront(note.id)
     onSelect(note.id)
     const downTarget = e.target as HTMLElement
@@ -388,30 +404,40 @@ function NoteCard({
         setDragging(false)
         onMove(note.id, nx, ny)
       } else {
-        handleClick(downTarget)
+        handleClick(downTarget, wasSelected)
       }
     }
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', up)
   }
 
-  // Un clic simple (sin arrastrar) permite escribir/editar directamente el elemento,
-  // sin necesidad de doble clic.
-  const handleClick = (target: HTMLElement) => {
+  // Primer clic: selecciona el elemento (para poder moverlo o borrarlo con Supr
+  // sin entrar a editar por accidente). Si YA estaba seleccionado, el clic edita
+  // directamente (sin necesidad de doble clic). Las notas recién creadas o
+  // vacías entran en edición de inmediato para poder escribir sin fricción.
+  const handleClick = (target: HTMLElement, wasSelected: boolean) => {
+    const isEmpty = note.kind === 'text' || note.kind === 'sticky' || note.kind === 'paper' || note.kind === 'frame'
+      ? !note.text
+      : false
+    const shouldEdit = wasSelected || isEmpty
+
     if (note.kind === 'sticker') {
-      setShowEmojis((v) => !v)
+      if (shouldEdit) setShowEmojis((v) => !v)
     } else if (note.kind === 'photo') {
-      if (target.closest('.photo-pic')) setShowEmojis(true)
-      else setEditing(true)
+      if (target.closest('.photo-pic')) {
+        if (shouldEdit) setShowEmojis(true)
+      } else if (shouldEdit || !note.text) {
+        setEditing(true)
+      }
     } else if (note.kind === 'frame') {
       // Clic en la cabecera → edita el título; clic en el cuerpo → edita el texto
       if (target.closest('.frame-bar')) {
-        if (note.showLabel !== false) setEditingTitle(true)
-      } else {
+        if ((wasSelected || !note.title) && note.showLabel !== false) setEditingTitle(true)
+      } else if (shouldEdit) {
         setEditing(true)
       }
     } else if (note.kind !== 'todo') {
-      setEditing(true)
+      if (shouldEdit) setEditing(true)
     }
   }
 
@@ -435,8 +461,8 @@ function NoteCard({
         nw = Math.max(28, Math.min(260, ow + (ev.clientX - startX) / zoom))
         el.style.fontSize = `${nw}px`
       } else {
-        nw = Math.max(120, Math.min(1400, ow + (ev.clientX - startX) / zoom))
-        nh = Math.max(80, Math.min(1000, oh + (ev.clientY - startY) / zoom))
+        nw = Math.max(140, Math.min(1400, ow + (ev.clientX - startX) / zoom))
+        nh = Math.max(100, Math.min(1000, oh + (ev.clientY - startY) / zoom))
         el.style.width = `${nw}px`
         el.style.height = `${nh}px`
       }
@@ -471,7 +497,7 @@ function NoteCard({
 
   const showPin = note.kind === 'paper' || note.kind === 'todo' || note.kind === 'photo'
   const canColor = note.kind !== 'photo' && note.kind !== 'sticker'
-  const canResize = note.kind === 'frame' || note.kind === 'sticker'
+  const canResize = note.kind === 'frame' || note.kind === 'sticker' || note.kind === 'todo'
 
   // Estilo dinámico (posición, apilamiento, tamaño, color propio)
   const style: React.CSSProperties = {
@@ -486,6 +512,10 @@ function NoteCard({
   if (note.kind === 'frame') {
     style.width = note.w ?? 300
     style.height = note.h ?? 200
+  }
+  if (note.kind === 'todo' && (note.w || note.h)) {
+    if (note.w) style.width = note.w
+    if (note.h) style.height = note.h
   }
   if (note.kind === 'sticker') style.fontSize = `${note.w ?? 76}px`
   if (note.kind === 'text' && note.color) style.color = note.color

@@ -14,8 +14,11 @@ import {
   Link2,
   Quote,
   Pin,
+  ChevronsLeft,
+  ChevronsRight,
 } from 'lucide-react'
 import { useStore } from '../store/useStore'
+import { useUi } from '../store/useUi'
 import { getLevelInfo, rankName } from '../store/gamification'
 import { Bar } from './ui'
 import { SyncBadge } from './SyncBadge'
@@ -39,20 +42,32 @@ const items = [
 export function Sidebar({ onOpenThemes }: { onOpenThemes: () => void }) {
   const xp = useStore((s) => s.game.xp)
   const info = getLevelInfo(xp)
+  const collapsed = useUi((s) => s.sidebarCollapsed)
+  const toggleSidebar = useUi((s) => s.toggleSidebar)
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar${collapsed ? ' collapsed' : ''}`}>
+      <button
+        className="sidebar-collapse-btn"
+        onClick={toggleSidebar}
+        title={collapsed ? 'Expandir menú' : 'Contraer menú'}
+      >
+        {collapsed ? <ChevronsRight size={15} /> : <ChevronsLeft size={15} />}
+      </button>
+
       <div className="brand">
         <div className="brand-logo">
           <img src="/haver.svg" alt="Haver" width={26} height={26} />
         </div>
-        <div>
-          <div className="brand-name">Haver</div>
-          <div className="brand-sub">Sube de nivel tu vida</div>
-        </div>
+        {!collapsed && (
+          <div>
+            <div className="brand-name">Haver</div>
+            <div className="brand-sub">Sube de nivel tu vida</div>
+          </div>
+        )}
       </div>
 
-      <div className="nav-label">Menú</div>
+      {!collapsed && <div className="nav-label">Menú</div>}
       <nav className="nav">
         {items.map((it) => {
           const Icon = it.icon
@@ -61,41 +76,44 @@ export function Sidebar({ onOpenThemes }: { onOpenThemes: () => void }) {
               key={it.to}
               to={it.to}
               end={it.end}
+              title={collapsed ? it.label : undefined}
               className={({ isActive }) =>
                 'nav-item' + (isActive ? ' active' : '')
               }
             >
               <Icon size={19} />
-              <span>{it.label}</span>
+              {!collapsed && <span>{it.label}</span>}
             </NavLink>
           )
         })}
       </nav>
 
       <div className="sidebar-foot">
-        <SyncBadge />
-        <button className="theme-btn" onClick={onOpenThemes}>
+        <SyncBadge collapsed={collapsed} />
+        <button className="theme-btn" onClick={onOpenThemes} title="Personalizar tema">
           <span className="theme-dot" />
-          <span style={{ flex: 1, textAlign: 'left' }}>Personalizar tema</span>
+          {!collapsed && <span style={{ flex: 1, textAlign: 'left' }}>Personalizar tema</span>}
           <Palette size={16} />
         </button>
         <div className="mini-level">
           <div className="mini-badge">{info.level}</div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 700, fontSize: 13 }}>
-              {rankName(info.level)}
+          {!collapsed && (
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: 13 }}>
+                {rankName(info.level)}
+              </div>
+              <div
+                style={{
+                  fontSize: 10,
+                  color: 'var(--muted)',
+                  margin: '3px 0 5px',
+                }}
+              >
+                {info.current}/{info.needed} XP
+              </div>
+              <Bar value={info.current} max={info.needed} />
             </div>
-            <div
-              style={{
-                fontSize: 10,
-                color: 'var(--muted)',
-                margin: '3px 0 5px',
-              }}
-            >
-              {info.current}/{info.needed} XP
-            </div>
-            <Bar value={info.current} max={info.needed} />
-          </div>
+          )}
         </div>
       </div>
     </aside>
