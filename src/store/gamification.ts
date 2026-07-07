@@ -382,11 +382,18 @@ export const ACHIEVEMENTS: Achievement[] = [
     check: (s) => (s.game.usedFeatures ?? []).includes('cloud-sync'),
   },
   {
-    id: 'backup-master',
-    name: 'Copia de seguridad',
-    desc: 'Exporta un respaldo de tus datos',
-    icon: '💾',
-    check: (s) => (s.game.usedFeatures ?? []).includes('backup-export'),
+    id: 'resource-curator',
+    name: 'Curador de valor',
+    desc: 'Guarda tu primera página web valiosa en Recursos',
+    icon: '🔗',
+    check: (s) => (s.resources ?? []).length >= 1,
+  },
+  {
+    id: 'resource-library',
+    name: 'Biblioteca personal',
+    desc: 'Guarda 10 recursos web organizados por categoría',
+    icon: '📚',
+    check: (s) => (s.resources ?? []).length >= 10,
   },
 ]
 

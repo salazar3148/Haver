@@ -92,6 +92,16 @@ export interface Supply {
   createdAt: number
 }
 
+// Página web que aporta valor (recurso guardado): título, URL y por qué sirve
+export interface Resource {
+  id: string
+  title: string
+  url: string
+  description: string
+  category: string // etiqueta libre (ej. "Productividad", "Finanzas", "Salud")
+  createdAt: number
+}
+
 export interface GameState {
   xp: number
   achievements: string[] // ids de logros desbloqueados
@@ -204,5 +214,6 @@ export interface AppState {
   events: CalendarEvent[]
   campaigns: Campaign[]
   frozenDays: string[] // días congelados (viaje/ausencia): no penalizan
+  resources: Resource[] // páginas web que aportan valor (recursos guardados)
   game: GameState
 }

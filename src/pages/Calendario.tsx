@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type CSSProperties } from 'react'
 import {
   ChevronLeft,
   ChevronRight,
@@ -46,6 +46,18 @@ const CAMP_EMOJIS = ['🎯', '🚀', '🏆', '📚', '💪', '🔥', '🧠', '�
 
 const ringColor = (pct: number) =>
   pct >= 80 ? '#34d399' : pct >= 50 ? '#fbbf24' : pct > 0 ? '#fb7185' : 'var(--faint)'
+
+// Nivel de "agrietado" de un día pasado según su % de cumplimiento.
+// A menor cumplimiento, más roto se ve (estilo "venom" resquebrajándose);
+// casi perfecto (>=95%) no muestra grietas.
+const crackLevel = (pct: number): number => {
+  if (pct >= 95) return 0
+  if (pct >= 80) return 1
+  if (pct >= 60) return 2
+  if (pct >= 40) return 3
+  if (pct >= 20) return 4
+  return 5
+}
 
 function Ring({ pct, size = 30 }: { pct: number; size?: number }) {
   const r = size / 2 - 3
@@ -207,10 +219,22 @@ export function Calendario() {
           const camps = campaignsOn(iso)
           const lps = lapsesByDate.get(iso) ?? []
           const dayNum = fromISO(iso).getDate()
+          // Grietas solo en días ya cerrados (pasado) con algo medible: cuanto
+          // más bajo el % de cumplimiento, más "roto" se ve el cuadro.
+          const level = iso < today && dc && dc.has && !frozen ? crackLevel(dc.pct) : 0
+          const crackVars =
+            level > 0
+              ? ({
+                  '--crack-r': `${[0, 20, 34, 48, 64, 82][level]}%`,
+                  '--crack-op': [0, 0.4, 0.55, 0.72, 0.88, 1][level],
+                } as CSSProperties)
+              : undefined
           return (
             <div
               key={iso}
-              className={`cal-cell ${inMonth ? '' : 'out'} ${iso === today ? 'today' : ''} ${frozen ? 'frozen' : ''} ${lps.length > 0 && !frozen ? 'broken' : ''}`}
+              className={`cal-cell ${inMonth ? '' : 'out'} ${iso === today ? 'today' : ''} ${frozen ? 'frozen' : ''} ${level > 0 ? `has-crack crack-${level}` : ''}`}
+              style={crackVars}
+              title={level > 0 ? `${dc?.pct}% de cumplimiento — entre más bajo, más agrietado` : undefined}
               onClick={() => setSelected(iso)}
             >
               {camps.length > 0 && (

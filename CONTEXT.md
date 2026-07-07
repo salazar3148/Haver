@@ -27,7 +27,7 @@ esté **conectado entre componentes**, y potenciar sus ideas añadiéndoles valo
 ## 2. Stack y comandos
 
 - **React 18 + TypeScript + Vite 5**
-- **Zustand 5** con middleware `persist` (estado de negocio en `localStorage`, clave `vida-quest-v1`, **version: 11** con migraciones)
+- **Zustand 5** con middleware `persist` (estado de negocio en `localStorage`, clave `vida-quest-v1`, **version: 12** con migraciones)
 - **react-router-dom 6** con `HashRouter`
 - **Recharts 2** (gráficos)
 - **lucide-react** (íconos)
@@ -86,6 +86,7 @@ src/
     Metas.tsx             # árbol de metas (única/diaria/semanal) + metas financieras (dinero)
     Finanzas.tsx          # ingresos/gastos/deudas/presupuestos + libro 2 columnas + consumibles + lista de compras
     Estadisticas.tsx      # puntualidad de metas, congelados, cumplimiento por hábito
+    Recursos.tsx          # páginas web que aportan valor: título, URL, descripción y categoría
     Logros.tsx            # "Jefe Final" (barra de logros) + marcador mes/año + trofeos (= mapa de funcionalidades) + respaldo/export-import + reset
   utils/
     date.ts               # utilidades de fecha (ISO LOCAL del dispositivo — nunca UTC, ver nota abajo)
@@ -130,6 +131,7 @@ AppState = {
   events: CalendarEvent[]
   campaigns: Campaign[]         // objetivos/retos de varios días
   frozenDays: string[]          // días congelados (viaje/ausencia) — no penalizan
+  resources: Resource[]         // páginas web que aportan valor (recursos guardados)
   game: GameState               // {xp, achievements:string[], lastActiveDate, usedFeatures:string[]}
 }
 ```
@@ -175,6 +177,7 @@ Supply = { id,name,emoji,lastBought(ISO),durationDays,price,createdAt }  // endD
 ShoppingItem = { id,name,bought:boolean,createdAt }
 CalendarEvent = { id,title,date,time('HH:MM'|''),type:'reunion'|'cita'|'tarea'|'evento',note,done,createdAt }
 Campaign = { id,title,emoji,color,startDate,endDate,habitIds[],goalIds[],createdAt }
+Resource = { id,title,url,description,category(string libre),createdAt } // "Recursos": páginas web de valor
 ```
 
 ---
@@ -192,6 +195,7 @@ consumibles: `addSupply, restockSupply(id) (resetea lastBought y registra gasto 
 compras: `addShoppingItem, toggleShoppingItem, removeShoppingItem, clearBoughtShopping`;
 tropiezos: `addLapse, removeLapse`;
 calendario: `addEvent, toggleEvent, removeEvent, addCampaign, removeCampaign`;
+recursos: `addResource, removeResource`;
 sistema: `importState(Partial<AppState>) (reemplaza todo), resetAll, _award(xp), markFeatureUsed(feature) (marca game.usedFeatures para logros de funciones sin datos propios; ver §6.1)`.
 
 `checkAchievements()` se llama tras cambios relevantes; desbloquea logros (ya **no** dan XP).
@@ -199,9 +203,10 @@ sistema: `importState(Partial<AppState>) (reemplaza todo), resetAll, _award(xp),
 (fue una fuente real de bugs: `addLapse`, `addSupply`, `addEvent`, `addCampaign`,
 `toggleFrozenDay`, `freezeRange` y `addShoppingItem` no la llamaban y sus logros
 nunca se desbloqueaban — ya corregido, pero revísalo en cada acción nueva).
-Migraciones por versión (v2..v11) rellenan campos nuevos sin perder datos. **Al
+Migraciones por versión (v2..v12) rellenan campos nuevos sin perder datos. **Al
 agregar un campo a una entidad: subir `version` y añadir bloque `if (version < N)`.**
 v11 añadió `game.usedFeatures: string[]` para logros de funciones sin datos propios.
+v12 añadió `resources: Resource[]` (páginas web de valor, sección Recursos).
 
 ---
 
@@ -278,14 +283,36 @@ datos (sección 12).
 
 - **Dashboard**: banner de "Intención de hoy" (link a Plan), stats (Balance/Ingresos/Gastos en `currencyShort`, Racha), fila "Hoy" (enfoque min, tareas done/total, rana del día), gráfico de balance acumulado 14d (área), dona de gastos por categoría, metas en progreso (barras), hábitos de hoy, aviso "por acabarse pronto", deuda total.
 - **Plan (Mi Día)**: toggle ☀️Hoy/🌙Mañana; intención; tareas del día (+ quick add, rana); ruleta de bloques de enfoque planeados; sub-metas diarias (commit/marcar); hábitos a comprometer (grid); ritual de cierre (+25XP + confeti). Todo enlaza al mismo estado.
-- **Calendario**: grid mensual lun-dom; cada celda = anillo de cumplimiento (dayCompliance), barras de campañas activas (color), chips de eventos; click abre detalle del día (cumplimiento, intención, campañas, tareas, agenda + agregar evento, congelar día, **tropiezos del día** con opción de registrar/borrar). Toolbar: navegación de mes, "Hoy", "Evento", "❄️ Congelar" (rango), "Objetivo". Objetivos (campañas) con color/emoji/fechas + **enlazar hábitos y metas**; al tocar un objetivo → modal con **gráfico de área día a día** (campaignSeries), % promedio, "Día X de Y", enlazados, eliminar. Días congelados con **franja diagonal helada**. Días con tropiezo se pintan **"rotos"/agrietados** (clase `.cal-cell.broken`: grietas SVG, glow rojo pulsante, shake al hover) — muy notorio a propósito, para desincentivar tropiezos con solo mirar el calendario.
+- **Calendario**: grid mensual lun-dom; cada celda = anillo de cumplimiento (dayCompliance), barras de campañas activas (color), chips de eventos; click abre detalle del día (cumplimiento, intención, campañas, tareas, agenda + agregar evento, congelar día, **tropiezos del día** con opción de registrar/borrar). Toolbar: navegación de mes, "Hoy", "Evento", "❄️ Congelar" (rango), "Objetivo". Objetivos (campañas) con color/emoji/fechas + **enlazar hábitos y metas**; al tocar un objetivo → modal con **gráfico de área día a día** (campaignSeries), % promedio, "Día X de Y", enlazados, eliminar. Días congelados con **franja diagonal helada**.
+  - **Días pasados "agrietados" según % de cumplimiento** (estilo "venom
+    resquebrajándose"): `crackLevel(pct)` en Calendario.tsx devuelve 0-5 niveles
+    (≥95% sin grietas, 80-94% leve, ... <20% crítico). El nivel se pasa como CSS
+    vars `--crack-r`/`--crack-op` inline y clases `.has-crack.crack-N`. En
+    `index.css`: grietas SVG enmascaradas por radio (`mask-image` radial, crecen
+    con el nivel), manchas negras/violeta tipo simbionte "comiéndose" la carta
+    (`::after`, `mix-blend-mode: multiply`), pulso de glow morado y —solo niveles
+    4-5— un parpadeo tenue (`crackFlicker`). A menor cumplimiento, MUY más roto;
+    cerca de 100% casi no se nota. Es intencionalmente notorio para desincentivar
+    incumplir con solo mirar el calendario. El indicador 😵 de tropiezos es
+    independiente y sigue apareciendo aparte (no se fusionó con las grietas).
+    **Los días congelados NUNCA se agrietan** (`dc` es `null` si `frozen`, por lo
+    que `level` queda en 0): un día congelado no penaliza, así que tampoco debe
+    verse roto. Respeta `[data-reduce='true']` (sin animación si el usuario apagó
+    efectos).
 - **Enfoque**: temporizador circular (anillo) violeta(enfoque)/esmeralda(descanso); toggle de fase tipo "phase-toggle"; **WheelPicker** (ruleta timón) para Enfoque 20–90 min y Descanso 5–120 min (escala verde→rojo SOLO dentro de la ruleta); al terminar enfoque suena **jingle tipo Zelda** y **auto-inicia descanso**; al terminar el bloque pide resultado (Concentrado / Me distraje → crea Lapse); botón "Me distraje" a mitad; stats (enfoque hoy, calidad %, total h); gráfico 7 días; elegir tarea del día como foco; panel **"Tropiezos de hoy"** (lista en vivo mientras corre el timer, con botón para registrar uno vía `LapseModal`). focusMin/breakMin se guardan en useUi.
 - **Tareas**: matriz de Eisenhower (importante/urgente → "Hazlo ya / Planifícalo / Despáchalo / Opcional"), "Cómete la rana" 🐸 (1 por día, +30XP), regla de 2 minutos, estimación en pomodoros; secciones Hoy / Próximas / Completadas; barra de progreso del día.
-- **Hábitos**: crear con ícono/color/frecuencia/momento del día/**días aplicables (Lu-Do)**/**subhábitos**/cue (ya sin campo de "recompensa inmediata", se quitó del formulario). Marcado **SOLO de hoy** (chips de subhábitos o botón "Marcar hoy"); tira semanal **solo lectura** (✓ completo, % parcial ámbar, ❄️ congelado, – no aplica). Gráfico lineal acumulado (toggle Semana/Mes) por fracción; "Cumplimiento por hábito" %; agrupación por momento del día si hay clasificados. Botón **"😵 Registrar tropiezo"** junto a "Nuevo hábito" (abre `LapseModal`, área por defecto `habito`).
+- **Hábitos**: crear con ícono/color/frecuencia/momento del día/**días aplicables (Lu-Do)**/**subhábitos**/cue (ya sin campo de "recompensa inmediata", se quitó del formulario). Cada tarjeta es el componente `HabitCard` (Habitos.tsx) con un mini-`Segmented` **Hoy/Ayer**: se puede marcar el día actual o **exclusivamente el día anterior** (hay hábitos que solo se confirman al día siguiente, ej. algo que se mide al despertar); si el día elegido está congelado o el hábito no aplica ese día, se avisa y no se puede marcar. Tira semanal **solo lectura** (✓ completo, % parcial ámbar, ❄️ congelado, – no aplica). Gráfico lineal acumulado (toggle Semana/Mes) por fracción; "Cumplimiento por hábito" %; agrupación por momento del día si hay clasificados. Botón **"😵 Registrar tropiezo"** junto a "Nuevo hábito" (abre `LapseModal`, área por defecto `habito`).
 - **Metas**: árbol (meta padre → sub-metas, conector visual `.tree-*`); cadencia **única** (objetivo numérico + barra +/-), **diaria/semanal** (marcar periodo, mini-semana, pendientes acumuladas 🔴); **metas financieras** (`money`) en COP con aporte y "faltan $X"; progreso de padre derivado de hijos; stats arriba (activas, cumplidas, pendientes acumuladas).
 - **Finanzas** (mes seleccionable con ◀▶): stats (Balance/Ingresos/Gastos/Tasa de ahorro) en `currencyShort`; **Análisis** (promedio diario, mayor gasto, evaluación de ahorro); **Libro a 2 columnas**: Ingresos (verde, izquierda) | divisor | Gastos (rojo, derecha) con "+" para agregar en cada columna, **filtro por categoría**, totales vivos, borrar en hover; **Presupuestos** por categoría (barra verde/ámbar/rojo + excedente); gráfico Ingresos vs Gastos (últimos 6 meses); **Deudas** (abonar); **Cosas por acabarse** (consumibles con días restantes, "Compré" registra gasto); **Lista de compras** pendientes; movimientos del mes.
 - **Estadísticas**: puntualidad de metas (antes/en tiempo/después + % puntual); días congelados (total/mes + advertencia si abusas); cumplimiento por hábito histórico (%, cumplidos/parciales/no cumplidos/total/congelados + racha).
-- **Logros & Progreso**: **Jefe Final** (barra de vida = logros desbloqueados/total, avatar evoluciona 🐉→👹→😈→🏆); stats (Nivel, XP, Logros, Racha); **Marcador Mes/Año** con anillos de Realización (verde) y Fallas (rojo) + desglose por categoría + tropiezos; **Trofeos** (grid de logros); **Datos y respaldo** (exportar/importar JSON, usa `importState`); **Reiniciar** todo.
+- **Recursos**: guarda páginas web que aportan valor (`Resource`: title, url, description, category libre). Tarjetas agrupadas por categoría (colores fijos para Productividad/Finanzas/Salud/Estudio/General, gris para categorías nuevas), muestra el hostname y botón "Visitar" (`target="_blank" rel="noopener noreferrer"`). El campo URL acepta sin `https://` (se normaliza al guardar). Es, en esencia, una libreta de marcadores curados con explicación de "para qué sirve" cada uno.
+- **Logros & Progreso**: **Jefe Final** (barra de vida = logros desbloqueados/total, avatar evoluciona 🐉→👹→😈→🏆); stats (Nivel, XP, Logros, Racha); **Marcador Mes/Año** con anillos de Realización (verde) y Fallas (rojo) + desglose por categoría + tropiezos; **Trofeos** (grid de logros); **Reiniciar** todo.
+  - Ya **no** existe exportar/importar respaldo manual (JSON) ni el logro
+    "backup-master": todo se guarda automáticamente en Supabase (sección 11), así
+    que un respaldo manual era redundante. `useStore.importState` **se conserva**
+    porque `useSync.ts` lo sigue usando internamente para aplicar los datos que
+    bajan de la nube (`pullRemote`) — no tocar esa función aunque ya no haya UI
+    de "Importar" en Logros.
 
 ---
 
@@ -317,7 +344,10 @@ Lista `THEMES` (en orden, el primero es default):
    halo rojo en `.brand-logo` (que ahora envuelve el `<img src="/haver.svg">`).
 2. cosmos 🌌 (violeta `#8b5cf6` + cian `#22d3ee`) — era el default anterior.
 3. sunset 🌅 (rosa/ámbar), 4. emerald 🌿 (verde/cian), 5. cyberpunk ⚡ (magenta/cian),
-   6. gold 👑 (ámbar/naranja), 7. aurora ☀️ (modo **light**: define text/muted/panel/border claros).
+   6. gold 👑 (ámbar/naranja), 7. **eclipse** 🔮 (negro absoluto `#000000` + violeta
+   `#a855f7`/`#6d28d9` asomando por las 4 esquinas vía `radial-gradient` en
+   `body::after`, + polvo de estrellas sutil en `body::before`; bordes de `.card`
+   con veta violeta tenue), 8. aurora ☀️ (modo **light**: define text/muted/panel/border claros).
 `applyTheme` usa `shade()` (con clamp 0-255, OJO: antes había un bug de overflow que
 generaba colores "arcoíris"; ya corregido). `--grad = linear-gradient(135deg, primary, secondary)`.
 El acento personalizado (useUi.accent) sobrescribe el primary.

@@ -158,6 +158,45 @@ body {
   box-shadow: 0 0 30px -4px rgba(245, 41, 31, 0.75);
 }
 
+/* Ambiente de Eclipse: negro absoluto con glow morado asomando por las esquinas */
+[data-theme='eclipse'] body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+  background:
+    radial-gradient(60% 45% at 0% 0%, rgba(168, 85, 247, 0.24), transparent 62%),
+    radial-gradient(60% 45% at 100% 0%, rgba(109, 40, 217, 0.22), transparent 62%),
+    radial-gradient(60% 45% at 0% 100%, rgba(109, 40, 217, 0.2), transparent 62%),
+    radial-gradient(60% 45% at 100% 100%, rgba(168, 85, 247, 0.22), transparent 62%),
+    radial-gradient(140% 110% at 50% 50%, transparent 45%, rgba(0, 0, 0, 0.55) 100%);
+}
+/* Textura de estrellas/polvo cósmico muy sutil */
+[data-theme='eclipse'] body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.5;
+  background-image:
+    radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,0.6) 0, transparent 100%),
+    radial-gradient(1px 1px at 68% 12%, rgba(255,255,255,0.5) 0, transparent 100%),
+    radial-gradient(1.5px 1.5px at 82% 68%, rgba(255,255,255,0.55) 0, transparent 100%),
+    radial-gradient(1px 1px at 34% 82%, rgba(255,255,255,0.45) 0, transparent 100%),
+    radial-gradient(1px 1px at 50% 45%, rgba(255,255,255,0.4) 0, transparent 100%),
+    radial-gradient(1.5px 1.5px at 8% 60%, rgba(255,255,255,0.5) 0, transparent 100%),
+    radial-gradient(1px 1px at 92% 38%, rgba(255,255,255,0.45) 0, transparent 100%);
+  background-size: 100% 100%;
+}
+[data-theme='eclipse'] .brand-logo {
+  box-shadow: 0 0 30px -2px rgba(168, 85, 247, 0.85);
+}
+[data-theme='eclipse'] .card {
+  border-color: rgba(168, 85, 247, 0.14);
+}
+
 a {
   color: inherit;
   text-decoration: none;
@@ -1780,46 +1819,85 @@ h3 {
   border-color: rgba(96, 165, 250, 0.35);
 }
 
-/* ===== Día con tropiezo: vidrio roto / agrietado ===== */
-.cal-cell.broken {
-  border-color: rgba(245, 41, 31, 0.6);
+/* ===== Días pasados agrietados según % de cumplimiento (efecto "venom") =====
+   A menor cumplimiento, más se resquebraja y "se lo come" el negro/veta violeta.
+   Niveles 1 (leve, 80-94%) a 5 (crítico, <20%). Controlado por --crack-r/--crack-op
+   calculados en Calendario.tsx (crackLevel). */
+.cal-cell.has-crack {
   background:
-    radial-gradient(130% 130% at 52% 44%, rgba(245, 41, 31, 0.26), rgba(245, 41, 31, 0.07) 52%, transparent 74%),
+    radial-gradient(
+      calc(var(--crack-r) + 20%) calc(var(--crack-r) + 20%) at 50% 46%,
+      rgba(20, 4, 26, calc(var(--crack-op) * 0.85)),
+      rgba(20, 4, 26, calc(var(--crack-op) * 0.35)) 55%,
+      transparent 78%
+    ),
     var(--panel);
-  animation: crackPulse 2.6s ease-in-out infinite;
+  border-color: color-mix(in srgb, #8b0f6b calc(var(--crack-op) * 70%), var(--border));
 }
-.cal-cell.broken::before {
+/* Capa 1: red de grietas (líneas), se revela más cuanto peor el día */
+.cal-cell.has-crack::before {
   content: '';
   position: absolute;
   inset: 0;
   z-index: 2;
   pointer-events: none;
-  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%20preserveAspectRatio='none'%3E%3Cg%20fill='none'%20stroke='%23ffffff'%20stroke-opacity='0.92'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='M52%2044%20L22%206'%20stroke-width='1.1'/%3E%3Cpath%20d='M52%2044%20L74%202'%20stroke-width='0.9'/%3E%3Cpath%20d='M52%2044%20L99%2026'%20stroke-width='1'/%3E%3Cpath%20d='M52%2044%20L94%2072'%20stroke-width='0.9'/%3E%3Cpath%20d='M52%2044%20L60%2099'%20stroke-width='1.1'/%3E%3Cpath%20d='M52%2044%20L26%2096'%20stroke-width='1'/%3E%3Cpath%20d='M52%2044%20L2%2066'%20stroke-width='0.9'/%3E%3Cpath%20d='M52%2044%20L4%2026'%20stroke-width='1'/%3E%3Cpath%20d='M34%2024%20L48%2018%20L40%2038'%20stroke-width='0.7'/%3E%3Cpath%20d='M72%2034%20L62%2026%20L78%2018'%20stroke-width='0.7'/%3E%3Cpath%20d='M74%2062%20L60%2058%20L70%2080'%20stroke-width='0.7'/%3E%3Cpath%20d='M32%2068%20L44%2060%20L36%2084'%20stroke-width='0.7'/%3E%3C/g%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%20preserveAspectRatio='none'%3E%3Cg%20fill='none'%20stroke='%23f2e9ff'%20stroke-opacity='0.95'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='M52%2044%20L22%206'%20stroke-width='1.15'/%3E%3Cpath%20d='M52%2044%20L74%202'%20stroke-width='0.9'/%3E%3Cpath%20d='M52%2044%20L99%2026'%20stroke-width='1'/%3E%3Cpath%20d='M52%2044%20L94%2072'%20stroke-width='0.9'/%3E%3Cpath%20d='M52%2044%20L60%2099'%20stroke-width='1.15'/%3E%3Cpath%20d='M52%2044%20L26%2096'%20stroke-width='1'/%3E%3Cpath%20d='M52%2044%20L2%2066'%20stroke-width='0.9'/%3E%3Cpath%20d='M52%2044%20L4%2026'%20stroke-width='1'/%3E%3Cpath%20d='M34%2024%20L48%2018%20L40%2038'%20stroke-width='0.7'/%3E%3Cpath%20d='M72%2034%20L62%2026%20L78%2018'%20stroke-width='0.7'/%3E%3Cpath%20d='M74%2062%20L60%2058%20L70%2080'%20stroke-width='0.7'/%3E%3Cpath%20d='M32%2068%20L44%2060%20L36%2084'%20stroke-width='0.7'/%3E%3Cpath%20d='M62%2050%20L84%2044%20L90%2058'%20stroke-width='0.6'/%3E%3Cpath%20d='M40%2054%20L16%2050%20L10%2038'%20stroke-width='0.6'/%3E%3Cpath%20d='M56%2062%20L52%2084%20L68%2090'%20stroke-width='0.6'/%3E%3Cpath%20d='M46%2036%20L38%2014%20L52%208'%20stroke-width='0.55'/%3E%3C/g%3E%3C/svg%3E");
   background-size: 100% 100%;
   background-repeat: no-repeat;
-  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.6)) drop-shadow(0 0 3px rgba(245, 41, 31, 0.5));
-  opacity: 0.95;
+  -webkit-mask-image: radial-gradient(circle at 52% 44%, #000 var(--crack-r), transparent calc(var(--crack-r) + 22%));
+  mask-image: radial-gradient(circle at 52% 44%, #000 var(--crack-r), transparent calc(var(--crack-r) + 22%));
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.7)) drop-shadow(0 0 4px rgba(168, 85, 247, 0.55));
+  opacity: var(--crack-op);
+}
+/* Capa 2: manchas negras/violeta "comiéndose" la carta, tipo simbionte */
+.cal-cell.has-crack::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: calc(var(--crack-op) * 0.9);
+  background-image:
+    radial-gradient(16% 20% at 18% 22%, rgba(6, 2, 10, 0.9), transparent 72%),
+    radial-gradient(20% 24% at 82% 20%, rgba(6, 2, 10, 0.88), transparent 72%),
+    radial-gradient(22% 26% at 78% 84%, rgba(6, 2, 10, 0.9), transparent 72%),
+    radial-gradient(18% 22% at 16% 82%, rgba(6, 2, 10, 0.85), transparent 72%),
+    radial-gradient(14% 18% at 50% 92%, rgba(139, 15, 107, 0.55), transparent 74%);
+  mix-blend-mode: multiply;
 }
 /* El contenido (número, eventos) va por encima de las grietas */
-.cal-cell.broken > * {
+.cal-cell.has-crack > * {
   position: relative;
   z-index: 3;
 }
-.cal-cell.broken .cal-daynum {
-  color: #ff5b4d;
-  text-shadow: 0 0 8px rgba(245, 41, 31, 0.55);
+.cal-cell.has-crack .cal-daynum {
+  color: #d9b8ff;
+  text-shadow: 0 0 8px rgba(168, 85, 247, 0.6);
 }
-.cal-cell.broken:hover {
+.cal-cell.crack-1 { animation: crackPulse 3.4s ease-in-out infinite; }
+.cal-cell.crack-2 { animation: crackPulse 3s ease-in-out infinite; }
+.cal-cell.crack-3 { animation: crackPulse 2.6s ease-in-out infinite; }
+.cal-cell.crack-4 { animation: crackPulse 2.2s ease-in-out infinite, crackFlicker 5s linear infinite; }
+.cal-cell.crack-5 { animation: crackPulse 1.8s ease-in-out infinite, crackFlicker 3.2s linear infinite; }
+.cal-cell.has-crack:hover {
   transform: translateY(-2px);
   animation: crackShake 0.45s ease;
 }
 @keyframes crackPulse {
   0%, 100% {
-    box-shadow: inset 0 0 0 1px rgba(245, 41, 31, 0.4), 0 0 14px -6px rgba(245, 41, 31, 0.45);
+    box-shadow: inset 0 0 0 1px rgba(168, 85, 247, calc(var(--crack-op) * 0.5)),
+      0 0 14px -6px rgba(139, 15, 107, calc(var(--crack-op) * 0.8));
   }
   50% {
-    box-shadow: inset 0 0 0 1px rgba(245, 41, 31, 0.72), 0 0 22px -2px rgba(245, 41, 31, 0.7);
+    box-shadow: inset 0 0 0 1px rgba(168, 85, 247, calc(var(--crack-op) * 0.85)),
+      0 0 24px -2px rgba(139, 15, 107, calc(var(--crack-op) * 1));
   }
+}
+/* Solo niveles altos (4-5): parpadeo tenue tipo "energía escapando" por las grietas */
+@keyframes crackFlicker {
+  0%, 92%, 100% { filter: none; }
+  94% { filter: brightness(1.35) saturate(1.2); }
+  96% { filter: brightness(0.9); }
 }
 @keyframes crackShake {
   0%, 100% { transform: translate(0, -2px); }
@@ -1828,7 +1906,7 @@ h3 {
   60% { transform: translate(-1px, -2px); }
   80% { transform: translate(1px, -1px); }
 }
-[data-reduce='true'] .cal-cell.broken {
+[data-reduce='true'] .cal-cell.has-crack {
   animation: none;
 }
 .cal-campaigns {

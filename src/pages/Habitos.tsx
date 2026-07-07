@@ -22,8 +22,9 @@ import {
   dayLabelShort,
   dayOfMonth,
   todayISO,
+  addDays,
 } from '../utils/date'
-import type { HabitFrequency, TimeOfDay } from '../store/types'
+import type { Habit, HabitFrequency, TimeOfDay } from '../store/types'
 
 const EMOJIS = ['💪', '📚', '🏃', '🧘', '💧', '🥗', '😴', '✍️', '🎯', '🧠', '🦷', '🎸']
 const COLORS = ['#8b5cf6', '#22d3ee', '#34d399', '#fbbf24', '#fb7185', '#f43f5e']
@@ -40,7 +41,7 @@ const TIME_ORDER: TimeOfDay[] = ['manana', 'dia', 'tarde', 'noche', '']
 type View = 'semana' | 'mes'
 
 export function Habitos() {
-  const { habits, addHabit, toggleHabit, toggleHabitSub, removeHabit } = useStore()
+  const { habits, addHabit } = useStore()
   const frozenDays = useStore((s) => s.frozenDays)
   const [modal, setModal] = useState(false)
   const [lapseModal, setLapseModal] = useState(false)
@@ -120,94 +121,6 @@ export function Habitos() {
 
   const barColor = (pct: number): 'green' | 'amber' | 'pink' =>
     pct >= 80 ? 'green' : pct >= 50 ? 'amber' : 'pink'
-
-  const renderCard = (h: (typeof habits)[number]) => {
-    const doneThisWeek = week.filter((d) => dayFraction(h, d) > 0).length
-    const goal = h.frequency === 'semanal' ? h.targetPerWeek : 7
-    const tm = TIME_META[h.timeOfDay || '']
-    const hasSubs = h.subs.length > 0
-    const todayFull = isDayFull(h, today)
-    return (
-      <div className="card habit-card" key={h.id}>
-        <div className="habit-top">
-          <div className="habit-emoji" style={{ background: `${h.color}22`, color: h.color }}>
-            {h.icon}
-          </div>
-          <div style={{ flex: 1 }}>
-            <div className="habit-name">{h.name}</div>
-            <div className="habit-freq">
-              {h.frequency} · {doneThisWeek}/{goal} esta semana
-            </div>
-          </div>
-          {h.timeOfDay && <span className="chip">{tm.emoji} {tm.label}</span>}
-          <button className="icon-btn danger" onClick={() => removeHabit(h.id)}>
-            <Trash2 size={15} />
-          </button>
-        </div>
-
-        {/* Historial de la semana (solo lectura) */}
-        <div className="week-dots">
-          {week.map((d) => {
-            const applies = habitAppliesOn(h, d)
-            const frozen = frozenDays.includes(d)
-            const frac = dayFraction(h, d)
-            const full = frac >= 1
-            const partial = frac > 0 && !full
-            return (
-              <div className="dot-wrap" key={d}>
-                <span className="dot-day">{dayLabelShort(d)}</span>
-                <div
-                  className={`dot ${full ? 'done' : ''} ${partial ? 'partial' : ''} ${d === today ? 'today' : ''}`}
-                  style={!applies ? { opacity: 0.25 } : frozen ? { opacity: 0.5 } : undefined}
-                  title={frozen ? 'Día congelado' : !applies ? 'No aplica este día' : d}
-                >
-                  {frozen ? '❄️' : !applies ? '–' : full ? '✓' : partial ? Math.round(frac * 100) + '%' : ''}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-
-        {/* Solo se marca HOY */}
-        {hasSubs ? (
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
-              Hoy
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {h.subs.map((s) => {
-                const on = isSubDone(h, today, s.id)
-                return (
-                  <button
-                    key={s.id}
-                    className={`chip ${on ? 'green' : ''}`}
-                    style={{ cursor: 'pointer', padding: '7px 12px' }}
-                    onClick={() => toggleHabitSub(h.id, today, s.id)}
-                  >
-                    {on ? '✓ ' : ''}{s.name}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        ) : (
-          <button
-            className={`btn btn-sm ${todayFull ? '' : 'btn-primary'}`}
-            style={{ alignSelf: 'flex-start' }}
-            onClick={() => toggleHabit(h.id, today)}
-          >
-            {todayFull ? '✓ Hecho hoy' : 'Marcar hoy'}
-          </button>
-        )}
-
-        {h.cue && (
-          <div style={{ fontSize: 12, color: 'var(--muted)', display: 'flex', gap: 6, alignItems: 'center' }}>
-            🧭 <span>{h.cue}</span>
-          </div>
-        )}
-      </div>
-    )
-  }
 
   const anyClassified = habits.some((h) => h.timeOfDay)
 
@@ -339,7 +252,7 @@ export function Habitos() {
 
           {/* ===== Tarjetas de hábito (semana lun-dom) ===== */}
           {!anyClassified ? (
-            <div className="grid cols-2">{habits.map((h) => renderCard(h))}</div>
+            <div className="grid cols-2">{habits.map((h) => <HabitCard key={h.id} h={h} week={week} today={today} frozenDays={frozenDays} />)}</div>
           ) : (
             TIME_ORDER.map((t) => {
               const group = habits.filter((h) => (h.timeOfDay || '') === t)
@@ -348,7 +261,7 @@ export function Habitos() {
               return (
                 <div key={t}>
                   <div className="section-title">{m.emoji} {m.label}</div>
-                  <div className="grid cols-2">{group.map((h) => renderCard(h))}</div>
+                  <div className="grid cols-2">{group.map((h) => <HabitCard key={h.id} h={h} week={week} today={today} frozenDays={frozenDays} />)}</div>
                 </div>
               )
             })
@@ -510,5 +423,127 @@ export function Habitos() {
 
       <LapseModal open={lapseModal} onClose={() => setLapseModal(false)} defaultArea="habito" />
     </>
+  )
+}
+
+// Tarjeta de un hábito. Se puede marcar HOY o AYER (exclusivamente esos 2 días):
+// hay hábitos que solo se pueden confirmar al día siguiente (ej. algo que se
+// mide al despertar), así que el día anterior queda editable un día más.
+function HabitCard({
+  h,
+  week,
+  today,
+  frozenDays,
+}: {
+  h: Habit
+  week: string[]
+  today: string
+  frozenDays: string[]
+}) {
+  const { toggleHabit, toggleHabitSub, removeHabit } = useStore()
+  const [markDay, setMarkDay] = useState<'hoy' | 'ayer'>('hoy')
+  const yesterday = addDays(today, -1)
+  const targetDate = markDay === 'hoy' ? today : yesterday
+
+  const doneThisWeek = week.filter((d) => dayFraction(h, d) > 0).length
+  const goal = h.frequency === 'semanal' ? h.targetPerWeek : 7
+  const tm = TIME_META[h.timeOfDay || '']
+  const hasSubs = h.subs.length > 0
+  const targetFull = isDayFull(h, targetDate)
+  const targetFrozen = frozenDays.includes(targetDate)
+  const targetApplies = habitAppliesOn(h, targetDate)
+
+  return (
+    <div className="card habit-card">
+      <div className="habit-top">
+        <div className="habit-emoji" style={{ background: `${h.color}22`, color: h.color }}>
+          {h.icon}
+        </div>
+        <div style={{ flex: 1 }}>
+          <div className="habit-name">{h.name}</div>
+          <div className="habit-freq">
+            {h.frequency} · {doneThisWeek}/{goal} esta semana
+          </div>
+        </div>
+        {h.timeOfDay && <span className="chip">{tm.emoji} {tm.label}</span>}
+        <button className="icon-btn danger" onClick={() => removeHabit(h.id)}>
+          <Trash2 size={15} />
+        </button>
+      </div>
+
+      {/* Historial de la semana (solo lectura) */}
+      <div className="week-dots">
+        {week.map((d) => {
+          const applies = habitAppliesOn(h, d)
+          const frozen = frozenDays.includes(d)
+          const frac = dayFraction(h, d)
+          const full = frac >= 1
+          const partial = frac > 0 && !full
+          return (
+            <div className="dot-wrap" key={d}>
+              <span className="dot-day">{dayLabelShort(d)}</span>
+              <div
+                className={`dot ${full ? 'done' : ''} ${partial ? 'partial' : ''} ${d === today ? 'today' : ''}`}
+                style={!applies ? { opacity: 0.25 } : frozen ? { opacity: 0.5 } : undefined}
+                title={frozen ? 'Día congelado' : !applies ? 'No aplica este día' : d}
+              >
+                {frozen ? '❄️' : !applies ? '–' : full ? '✓' : partial ? Math.round(frac * 100) + '%' : ''}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Se marca HOY o AYER (selector, exclusivamente esos 2 días) */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--faint)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          {markDay === 'hoy' ? 'Hoy' : 'Ayer'}
+        </div>
+        <div className="segmented" style={{ padding: 2 }}>
+          <button className={markDay === 'hoy' ? 'active' : ''} style={{ padding: '4px 10px', fontSize: 11.5 }} onClick={() => setMarkDay('hoy')}>
+            Hoy
+          </button>
+          <button className={markDay === 'ayer' ? 'active' : ''} style={{ padding: '4px 10px', fontSize: 11.5 }} onClick={() => setMarkDay('ayer')}>
+            Ayer
+          </button>
+        </div>
+      </div>
+
+      {targetFrozen ? (
+        <div style={{ fontSize: 12, color: 'var(--muted)' }}>❄️ Ese día está congelado, no se puede marcar.</div>
+      ) : !targetApplies ? (
+        <div style={{ fontSize: 12, color: 'var(--muted)' }}>Este hábito no aplica ese día.</div>
+      ) : hasSubs ? (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {h.subs.map((s) => {
+            const on = isSubDone(h, targetDate, s.id)
+            return (
+              <button
+                key={s.id}
+                className={`chip ${on ? 'green' : ''}`}
+                style={{ cursor: 'pointer', padding: '7px 12px' }}
+                onClick={() => toggleHabitSub(h.id, targetDate, s.id)}
+              >
+                {on ? '✓ ' : ''}{s.name}
+              </button>
+            )
+          })}
+        </div>
+      ) : (
+        <button
+          className={`btn btn-sm ${targetFull ? '' : 'btn-primary'}`}
+          style={{ alignSelf: 'flex-start' }}
+          onClick={() => toggleHabit(h.id, targetDate)}
+        >
+          {targetFull ? `✓ Hecho ${markDay}` : `Marcar ${markDay}`}
+        </button>
+      )}
+
+      {h.cue && (
+        <div style={{ fontSize: 12, color: 'var(--muted)', display: 'flex', gap: 6, alignItems: 'center' }}>
+          🧭 <span>{h.cue}</span>
+        </div>
+      )}
+    </div>
   )
 }

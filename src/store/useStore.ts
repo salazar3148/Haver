@@ -12,6 +12,7 @@ import type {
   Supply,
   CalendarEvent,
   Campaign,
+  Resource,
 } from './types'
 import { uid } from '../utils/format'
 import { todayISO, startOfWeek, addDays } from '../utils/date'
@@ -72,6 +73,9 @@ interface Store extends AppState {
   removeEvent: (id: string) => void
   addCampaign: (c: Omit<Campaign, 'id' | 'createdAt'>) => void
   removeCampaign: (id: string) => void
+  // recursos (páginas web que aportan valor)
+  addResource: (r: Omit<Resource, 'id' | 'createdAt'>) => void
+  removeResource: (id: string) => void
   // sistema
   importState: (data: Partial<AppState>) => void
   resetAll: () => void
@@ -96,6 +100,7 @@ const initial: AppState = {
   events: [],
   campaigns: [],
   frozenDays: [],
+  resources: [],
   game: { xp: 0, achievements: [], lastActiveDate: todayISO(), usedFeatures: [] },
 }
 
@@ -504,6 +509,15 @@ export const useStore = create<Store>()(
         removeCampaign: (id) =>
           set((st) => ({ campaigns: st.campaigns.filter((c) => c.id !== id) })),
 
+        addResource: (r) => {
+          set((st) => ({
+            resources: [{ ...r, id: uid(), createdAt: Date.now() }, ...st.resources],
+          }))
+          checkAchievements()
+        },
+        removeResource: (id) =>
+          set((st) => ({ resources: st.resources.filter((r) => r.id !== id) })),
+
         importState: (data) =>
           set(() => ({
             transactions: data.transactions ?? [],
@@ -520,6 +534,7 @@ export const useStore = create<Store>()(
             events: data.events ?? [],
             campaigns: data.campaigns ?? [],
             frozenDays: data.frozenDays ?? [],
+            resources: data.resources ?? [],
             game: data.game
               ? { ...data.game, usedFeatures: data.game.usedFeatures ?? [] }
               : { xp: 0, achievements: [], lastActiveDate: todayISO(), usedFeatures: [] },
@@ -530,7 +545,7 @@ export const useStore = create<Store>()(
     },
     {
       name: 'vida-quest-v1',
-      version: 11,
+      version: 12,
       migrate: (persisted: any, version: number) => {
         if (!persisted) return persisted
         const s = persisted
@@ -588,6 +603,9 @@ export const useStore = create<Store>()(
         }
         if (version < 11) {
           s.game = { usedFeatures: [], ...(s.game ?? {}) }
+        }
+        if (version < 12) {
+          s.resources = s.resources ?? []
         }
         return s
       },

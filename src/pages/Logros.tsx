@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState } from 'react'
-import { Trophy, RotateCcw, Award, Download, Upload, Database, Flame, Swords } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Trophy, RotateCcw, Award, Flame, Swords } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { Modal, Segmented } from '../components/ui'
 import { XpWidget } from '../App'
@@ -10,7 +10,7 @@ import {
   computeStreak,
 } from '../store/gamification'
 import { computeScore } from '../store/stats'
-import { todayISO, currentMonth, currentYear, currentMonthKey, monthLabelLong } from '../utils/date'
+import { currentMonth, currentYear, currentMonthKey, monthLabelLong } from '../utils/date'
 
 function Ring({ pct, color, value, label }: { pct: number; color: string; value: string; label: string }) {
   const R = 40
@@ -42,11 +42,9 @@ function Ring({ pct, color, value, label }: { pct: number; color: string; value:
 
 export function Logros() {
   const state = useStore()
-  const { game, habits, resetAll, importState, markFeatureUsed } = state
+  const { game, habits, resetAll } = state
   const [confirm, setConfirm] = useState(false)
   const [period, setPeriod] = useState<'mes' | 'año'>('mes')
-  const [msg, setMsg] = useState('')
-  const fileRef = useRef<HTMLInputElement>(null)
   const info = getLevelInfo(game.xp)
   const unlocked = game.achievements.length
   const streak = computeStreak(habits)
@@ -59,43 +57,6 @@ export function Logros() {
     [state, period]
   )
   const periodLabel = period === 'mes' ? monthLabelLong(currentMonthKey()) : String(new Date().getFullYear())
-
-  const exportData = () => {
-    const { transactions, debts, budgets, habits, goals, tasks, focus, lapses, plans, supplies, shopping, game } = useStore.getState()
-    const payload = {
-      app: 'haver',
-      version: 7,
-      exportedAt: new Date().toISOString(),
-      data: { transactions, debts, budgets, habits, goals, tasks, focus, lapses, plans, supplies, shopping, game },
-    }
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `haver-${todayISO()}.json`
-    a.click()
-    URL.revokeObjectURL(url)
-    markFeatureUsed('backup-export')
-    setMsg('✅ Respaldo descargado. Guárdalo en tu nube para verlo en otros equipos.')
-  }
-  const onImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => {
-      try {
-        const parsed = JSON.parse(String(reader.result))
-        const data = parsed.data ?? parsed
-        if (!data || typeof data !== 'object') throw new Error('inválido')
-        importState(data)
-        setMsg('✅ Datos importados correctamente.')
-      } catch {
-        setMsg('❌ El archivo no es un respaldo válido de Haver.')
-      }
-    }
-    reader.readAsText(file)
-    e.target.value = ''
-  }
 
   return (
     <>
@@ -236,20 +197,6 @@ export function Logros() {
             )
           })}
         </div>
-      </div>
-
-      <div className="card" style={{ marginTop: 18 }}>
-        <div className="card-title"><Database size={16} /> Datos y respaldo</div>
-        <p style={{ color: 'var(--muted)', fontSize: 13, lineHeight: 1.6, marginBottom: 16 }}>
-          Tu progreso se guarda en este navegador. Para tenerlo en varios equipos, exporta un respaldo
-          y guárdalo en tu nube (Drive, OneDrive, Dropbox); luego impórtalo en el otro equipo.
-        </p>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <button className="btn btn-primary" onClick={exportData}><Download size={16} /> Exportar respaldo</button>
-          <button className="btn" onClick={() => fileRef.current?.click()}><Upload size={16} /> Importar respaldo</button>
-          <input ref={fileRef} type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={onImportFile} />
-        </div>
-        {msg && <div style={{ marginTop: 14, fontSize: 13 }}>{msg}</div>}
       </div>
 
       <div style={{ marginTop: 18 }}>
