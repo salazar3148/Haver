@@ -139,6 +139,7 @@ export interface BoardNote {
   z: number // orden de apilamiento
   w?: number // ancho (frame) o tamaño de fuente (sticker)
   h?: number // alto (frame)
+  showLabel?: boolean // frame: mostrar la etiqueta/título (opcional). undefined = true
   createdAt: number
 }
 

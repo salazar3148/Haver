@@ -2723,6 +2723,10 @@ h3 {
 .note-ui-btn.danger:hover {
   background: #e5484d;
 }
+.note-ui-btn.on {
+  background: var(--primary);
+  color: #fff;
+}
 
 /* Selector de color de la nota */
 .note-colors {

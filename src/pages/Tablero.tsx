@@ -7,6 +7,7 @@ import {
   Square,
   Type,
   Smile,
+  Tag,
   Trash2,
   Pencil,
   Palette,
@@ -399,6 +400,8 @@ function NoteCard({
     } else if (note.kind === 'photo') {
       if (target.closest('.photo-pic')) setShowEmojis(true)
       else setEditing(true)
+    } else if (note.kind === 'frame') {
+      if (note.showLabel !== false) setEditing(true) // solo edita si la etiqueta está activa
     } else if (note.kind !== 'todo') {
       setEditing(true)
     }
@@ -487,6 +490,18 @@ function NoteCard({
         {note.kind === 'sticker' ? (
           <button className="note-ui-btn" title="Cambiar emoji" onClick={() => setShowEmojis((v) => !v)}>
             <Smile size={13} />
+          </button>
+        ) : note.kind === 'frame' ? (
+          <button
+            className={`note-ui-btn${note.showLabel === false ? '' : ' on'}`}
+            title={note.showLabel === false ? 'Mostrar etiqueta' : 'Ocultar etiqueta'}
+            onClick={() => {
+              const turningOn = note.showLabel === false
+              onUpdate(note.id, { showLabel: turningOn })
+              if (turningOn) setEditing(true)
+            }}
+          >
+            <Tag size={13} />
           </button>
         ) : note.kind !== 'todo' ? (
           <button className="note-ui-btn" title="Editar" onClick={() => setEditing(true)}>
@@ -581,15 +596,17 @@ function NoteCard({
           </div>
         )
 
-      case 'frame':
-        return (
-          <div className="frame-bar" title="Arrastra para mover · clic para renombrar">
-            {editing ? (
+      case 'frame': {
+        // La etiqueta es opcional: si está desactivada, el cuadro va solo.
+        if (note.showLabel === false) return null
+        if (editing) {
+          return (
+            <div className="frame-bar">
               <input
                 className="note-input frame-label"
                 autoFocus
                 value={draft}
-                placeholder={placeholder}
+                placeholder="Etiqueta…"
                 onChange={(e) => setDraft(e.target.value)}
                 onBlur={commitText}
                 onKeyDown={(e) => {
@@ -597,11 +614,26 @@ function NoteCard({
                   else onEditKeyDown(e)
                 }}
               />
-            ) : (
-              <span className="frame-label-view">{note.text || 'Cuadro'}</span>
-            )}
-          </div>
-        )
+            </div>
+          )
+        }
+        if (note.text) {
+          return (
+            <div className="frame-bar" title="Clic para renombrar">
+              <span className="frame-label-view">{note.text}</span>
+            </div>
+          )
+        }
+        // Etiqueta activa pero vacía: solo se insinúa cuando el cuadro está seleccionado
+        if (selected) {
+          return (
+            <div className="frame-bar" title="Clic para nombrar">
+              <span className="frame-label-view ph">Etiqueta…</span>
+            </div>
+          )
+        }
+        return null
+      }
 
       case 'photo':
         return (
