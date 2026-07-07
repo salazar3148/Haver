@@ -84,7 +84,7 @@ interface Store extends AppState {
   toggleQuoteFavorite: (id: string) => void
   removeQuote: (id: string) => void
   // tablero (corcho)
-  addNote: (kind: NoteKind, x: number, y: number) => void
+  addNote: (kind: NoteKind, x: number, y: number) => string
   updateNote: (id: string, patch: Partial<Omit<BoardNote, 'id' | 'createdAt'>>) => void
   moveNote: (id: string, x: number, y: number) => void
   bringNoteToFront: (id: string) => void
@@ -573,6 +573,7 @@ export const useStore = create<Store>()(
           }
           set((st) => ({ boardNotes: [...st.boardNotes, note] }))
           checkAchievements()
+          return note.id
         },
         updateNote: (id, patch) =>
           set((st) => ({

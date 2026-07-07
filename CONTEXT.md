@@ -363,9 +363,12 @@ datos (sección 12).
     **posición libre en coordenadas del lienzo**. Se **arrastran**
     (pointer events; el delta de pantalla se divide por `zoom`; se clampa al lienzo; `moveNote`
     solo al soltar; `bringNoteToFront` al tomarla). `startDrag` hace `stopPropagation` para no
-    disparar el paneo. Doble clic → editar texto inline (fuente manuscrita **Caveat** en
-    index.html). Estado en `boardNotes` (persist v15). CSS: sección "TABLERO" al final de
-    index.css; respeta `[data-reduce]`.
+    disparar el paneo. Doble clic sobre una nota → editar texto inline; **doble clic sobre el
+    lienzo vacío** → crea una nota adhesiva ahí y la deja lista para escribir (`addNote` devuelve
+    el id → `autoEditId` → `NoteCard` inicia en modo edición). Fuente de las notas: **Lora**
+    (serif elegante, formal) en index.html. En modo noche el glow es intencionalmente MUY tenue
+    (casi imperceptible) para no distraer. Estado en `boardNotes` (persist v15). CSS: sección
+    "TABLERO" al final de index.css; respeta `[data-reduce]`.
 - **Logros & Progreso**: **Jefe Final** (barra de vida = logros desbloqueados/total, avatar evoluciona 🐉→👹→😈→🏆); stats (Nivel, XP, Logros, Racha); **Marcador Mes/Año** con anillos de Realización (verde) y Fallas (rojo) + desglose por categoría + tropiezos; **Trofeos** (grid de logros); **Reiniciar** todo.
   - Ya **no** existe exportar/importar respaldo manual (JSON) ni el logro
     "backup-master": todo se guarda automáticamente en Supabase (sección 11), así

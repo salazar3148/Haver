@@ -72,6 +72,7 @@ export function Tablero() {
 
   const viewportRef = useRef<HTMLDivElement>(null)
   const [view, setView] = useState<View>({ x: 40, y: 40, zoom: 1 })
+  const [autoEditId, setAutoEditId] = useState<string | null>(null)
 
   // Punteros activos (para gestos táctiles: 1 dedo = paneo, 2 dedos = pinch-zoom)
   const pointers = useRef<Map<number, { x: number; y: number }>>(new Map())
@@ -90,6 +91,21 @@ export function Tablero() {
     const x = Math.max(0, Math.min(CANVAS_W - 200, Math.round(cx)))
     const y = Math.max(0, Math.min(CANVAS_H - 160, Math.round(cy)))
     addNote(kind, x, y)
+  }
+
+  // Doble clic sobre el lienzo vacío: crea una nota adhesiva justo ahí y la
+  // deja lista para escribir.
+  const onBoardDoubleClick = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('.note, .board-controls, .board-empty')) return
+    const vp = viewportRef.current
+    const rect = vp?.getBoundingClientRect()
+    if (!rect) return
+    const cx = (e.clientX - rect.left - view.x) / view.zoom - 90
+    const cy = (e.clientY - rect.top - view.y) / view.zoom - 60
+    const x = Math.max(0, Math.min(CANVAS_W - 200, Math.round(cx)))
+    const y = Math.max(0, Math.min(CANVAS_H - 160, Math.round(cy)))
+    const id = addNote('sticky', x, y)
+    setAutoEditId(id)
   }
 
   // ---- Paneo con 1 puntero / pinch con 2 ----
@@ -219,6 +235,7 @@ export function Tablero() {
         onPointerMove={onPointerMove}
         onPointerUp={endPointer}
         onPointerCancel={endPointer}
+        onDoubleClick={onBoardDoubleClick}
       >
         <div
           className="board-canvas"
@@ -233,6 +250,7 @@ export function Tablero() {
               key={n.id}
               note={n}
               zoom={view.zoom}
+              autoEdit={n.id === autoEditId}
               onMove={moveNote}
               onFront={bringNoteToFront}
               onUpdate={updateNote}
@@ -275,6 +293,7 @@ export function Tablero() {
 function NoteCard({
   note,
   zoom,
+  autoEdit,
   onMove,
   onFront,
   onUpdate,
@@ -285,6 +304,7 @@ function NoteCard({
 }: {
   note: BoardNote
   zoom: number
+  autoEdit?: boolean
   onMove: (id: string, x: number, y: number) => void
   onFront: (id: string) => void
   onUpdate: (id: string, patch: Partial<BoardNote>) => void
@@ -295,7 +315,7 @@ function NoteCard({
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const [dragging, setDragging] = useState(false)
-  const [editing, setEditing] = useState(false)
+  const [editing, setEditing] = useState(!!autoEdit)
   const [showColors, setShowColors] = useState(false)
   const [draft, setDraft] = useState(note.text)
   const [newItem, setNewItem] = useState('')

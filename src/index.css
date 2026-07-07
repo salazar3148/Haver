@@ -2387,7 +2387,7 @@ h3 {
   transform: rotate(var(--rot, 0deg));
   transition: box-shadow 0.18s ease, transform 0.12s ease, filter 0.18s ease;
   color: #2a2a2a;
-  font-family: 'Caveat', 'Inter', cursive;
+  font-family: 'Lora', 'Inter', serif;
 }
 .note:active {
   cursor: grabbing;
@@ -2494,11 +2494,11 @@ h3 {
 }
 .todo-title,
 .todo-title-view {
-  font-family: 'Caveat', cursive;
-  font-size: 24px;
-  font-weight: 700;
+  font-family: 'Lora', serif;
+  font-size: 17px;
+  font-weight: 600;
   color: #2a2a2a;
-  line-height: 1.1;
+  line-height: 1.25;
   margin-bottom: 8px;
   border-bottom: 2px dashed rgba(0, 0, 0, 0.18);
   padding-bottom: 4px;
@@ -2611,29 +2611,29 @@ h3 {
 }
 .photo-cap-view,
 .photo-cap {
-  font-family: 'Caveat', cursive;
-  font-size: 21px;
-  font-weight: 600;
+  font-family: 'Lora', serif;
+  font-size: 14px;
+  font-weight: 500;
   text-align: center;
   color: #333;
   margin-top: 8px;
-  min-height: 26px;
-  line-height: 1.1;
+  min-height: 24px;
+  line-height: 1.35;
 }
 
 /* Texto de sticky / papel */
 .note-text {
-  font-size: 21px;
-  font-weight: 600;
-  line-height: 1.22;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
   min-height: 80px;
 }
 .note-paper .note-text {
   padding-left: 10px;
-  font-size: 20px;
-  line-height: 27px;
+  font-size: 14.5px;
+  line-height: 26px;
 }
 .note .ph {
   color: rgba(0, 0, 0, 0.32);
@@ -2647,10 +2647,10 @@ h3 {
   background: rgba(255, 255, 255, 0.35);
   outline: none;
   resize: none;
-  font-family: 'Caveat', cursive;
-  font-size: 21px;
-  font-weight: 600;
-  line-height: 1.22;
+  font-family: 'Lora', serif;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.5;
   color: #222;
   min-height: 84px;
   border-radius: 4px;
@@ -2659,11 +2659,11 @@ h3 {
 .photo-cap.note-input {
   min-height: 30px;
   text-align: center;
-  font-size: 21px;
+  font-size: 14px;
 }
 .todo-title.note-input {
   min-height: 0;
-  font-size: 24px;
+  font-size: 17px;
 }
 
 /* Mini barra de acciones de la nota (aparece al pasar el cursor) */
@@ -2778,14 +2778,13 @@ h3 {
 .board-viewport[data-board='dark'] .note-paper,
 .board-viewport[data-board='dark'] .note-todo,
 .board-viewport[data-board='dark'] .note-photo {
-  background: linear-gradient(160deg, rgba(22, 24, 32, 0.92), rgba(11, 13, 19, 0.96));
-  border: 1.5px solid color-mix(in srgb, var(--paper) 72%, transparent);
+  background: linear-gradient(160deg, rgba(26, 28, 36, 0.95), rgba(16, 18, 24, 0.97));
+  border: 1px solid color-mix(in srgb, var(--paper) 32%, rgba(255, 255, 255, 0.06));
   border-radius: 12px;
   box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--paper) 28%, transparent),
-    0 0 16px -1px color-mix(in srgb, var(--paper) 60%, transparent),
-    0 0 38px -6px color-mix(in srgb, var(--paper) 45%, transparent),
-    0 16px 32px -14px rgba(0, 0, 0, 0.9);
+    0 0 0 1px color-mix(in srgb, var(--paper) 10%, transparent),
+    0 0 10px -6px color-mix(in srgb, var(--paper) 30%, transparent),
+    0 12px 28px -16px rgba(0, 0, 0, 0.9);
 }
 /* Sin esquina doblada ni líneas de cuaderno en modo neón */
 .board-viewport[data-board='dark'] .note-sticky::after,
@@ -2799,8 +2798,8 @@ h3 {
 .board-viewport[data-board='dark'] .todo-title-view,
 .board-viewport[data-board='dark'] .photo-cap,
 .board-viewport[data-board='dark'] .photo-cap-view {
-  color: color-mix(in srgb, var(--paper) 45%, #ffffff);
-  text-shadow: 0 0 9px color-mix(in srgb, var(--paper) 40%, transparent);
+  color: color-mix(in srgb, var(--paper) 20%, #ffffff);
+  text-shadow: none;
 }
 .board-viewport[data-board='dark'] .todo-title,
 .board-viewport[data-board='dark'] .todo-title-view {
@@ -2816,10 +2815,10 @@ h3 {
   color: rgba(255, 255, 255, 0.4);
 }
 
-/* Chincheta con brillo neón */
+/* Chincheta con brillo neón muy tenue */
 .board-viewport[data-board='dark'] .pin {
   box-shadow:
-    0 0 10px color-mix(in srgb, var(--pin) 80%, transparent),
+    0 0 4px -1px color-mix(in srgb, var(--pin) 55%, transparent),
     0 3px 5px rgba(0, 0, 0, 0.5),
     0 1px 0 rgba(255, 255, 255, 0.4) inset;
 }
@@ -2831,9 +2830,9 @@ h3 {
   color: color-mix(in srgb, var(--paper) 55%, #fff);
 }
 .board-viewport[data-board='dark'] .chk.on {
-  background: color-mix(in srgb, var(--paper) 22%, transparent);
-  border-color: var(--paper);
-  box-shadow: 0 0 9px -1px color-mix(in srgb, var(--paper) 65%, transparent);
+  background: color-mix(in srgb, var(--paper) 20%, transparent);
+  border-color: color-mix(in srgb, var(--paper) 75%, transparent);
+  box-shadow: none;
 }
 .board-viewport[data-board='dark'] .chk-add {
   border-top-color: rgba(255, 255, 255, 0.1);
