@@ -102,12 +102,11 @@ export interface Resource {
   createdAt: number
 }
 
-// Cita célebre guardada para inspirarse (autor, texto, categoría libre)
+// Cita célebre guardada para inspirarse (autor opcional)
 export interface Quote {
   id: string
   text: string
-  author: string
-  tag: string // categoría/tema libre (ej. "Disciplina", "Estoicismo", "Éxito")
+  author: string // opcional: puede quedar vacío si no se conoce el autor
   favorite: boolean
   createdAt: number
 }

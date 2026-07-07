@@ -565,7 +565,7 @@ export const useStore = create<Store>()(
     },
     {
       name: 'vida-quest-v1',
-      version: 13,
+      version: 14,
       migrate: (persisted: any, version: number) => {
         if (!persisted) return persisted
         const s = persisted
@@ -629,6 +629,13 @@ export const useStore = create<Store>()(
         }
         if (version < 13) {
           s.quotes = s.quotes ?? []
+        }
+        if (version < 14) {
+          // Las citas ya no tienen categoría (tag): se quitó por simplicidad.
+          s.quotes = (s.quotes ?? []).map((q: any) => {
+            const { tag, ...rest } = q
+            return rest
+          })
         }
         return s
       },

@@ -27,7 +27,7 @@ esté **conectado entre componentes**, y potenciar sus ideas añadiéndoles valo
 ## 2. Stack y comandos
 
 - **React 18 + TypeScript + Vite 5**
-- **Zustand 5** con middleware `persist` (estado de negocio en `localStorage`, clave `vida-quest-v1`, **version: 13** con migraciones)
+- **Zustand 5** con middleware `persist` (estado de negocio en `localStorage`, clave `vida-quest-v1`, **version: 14** con migraciones)
 - **react-router-dom 6** con `HashRouter`
 - **Recharts 2** (gráficos)
 - **lucide-react** (íconos)
@@ -139,9 +139,9 @@ AppState = {
 ```
 
 `game.usedFeatures` guarda ids de funciones sin rastro propio en `AppState`
-(tema, sync en la nube, respaldo, reabastecer, etc.) que un logro necesita
-comprobar. Se marca con `useStore().markFeatureUsed(id)`. **Ver sección 6.1:
-regla de oro — toda funcionalidad debe tener su logro.**
+(tema/acento, sync en la nube, reabastecer un consumible, etc.) que un logro
+necesita comprobar. Se marca con `useStore().markFeatureUsed(id)`. **Ver
+sección 6.1: regla de oro — toda funcionalidad debe tener su logro.**
 
 Detalle de entidades clave:
 
@@ -180,7 +180,7 @@ ShoppingItem = { id,name,bought:boolean,createdAt }
 CalendarEvent = { id,title,date,time('HH:MM'|''),type:'reunion'|'cita'|'tarea'|'evento',note,done,createdAt }
 Campaign = { id,title,emoji,color,startDate,endDate,habitIds[],goalIds[],createdAt }
 Resource = { id,title,url,description,category(string libre),createdAt } // "Recursos": páginas web de valor
-Quote = { id,text,author,tag(string libre),favorite:boolean,createdAt } // "Citas": frases para inspirarse
+Quote = { id,text,author(opcional, puede ir vacío),favorite:boolean,createdAt } // "Citas": frases para inspirarse
 ```
 
 ---
@@ -207,11 +207,13 @@ sistema: `importState(Partial<AppState>) (reemplaza todo), resetAll, _award(xp),
 (fue una fuente real de bugs: `addLapse`, `addSupply`, `addEvent`, `addCampaign`,
 `toggleFrozenDay`, `freezeRange` y `addShoppingItem` no la llamaban y sus logros
 nunca se desbloqueaban — ya corregido, pero revísalo en cada acción nueva).
-Migraciones por versión (v2..v13) rellenan campos nuevos sin perder datos. **Al
+Migraciones por versión (v2..v14) rellenan campos nuevos sin perder datos. **Al
 agregar un campo a una entidad: subir `version` y añadir bloque `if (version < N)`.**
 v11 añadió `game.usedFeatures: string[]` para logros de funciones sin datos propios.
 v12 añadió `resources: Resource[]` (páginas web de valor, sección Recursos).
 v13 añadió `quotes: Quote[]` (citas célebres, sección Citas).
+v14 quitó el campo `tag` de `Quote` (categorías descartadas por el usuario;
+la migración limpia el campo de las citas ya guardadas).
 
 ---
 
@@ -221,7 +223,7 @@ v13 añadió `quotes: Quote[]` (citas célebres, sección Citas).
 - **Niveles**: `xpForLevel(n)=round(100*n^1.5)` acumulativo; `getLevelInfo(xp)` → {level,current,needed,progress,totalXp}.
 - **Rangos** (`rankName`): Novato→Aprendiz(3)→Aventurero(7)→Experto(12)→Veterano(20)→Maestro(30)→Leyenda(40).
 - **Racha** (`computeStreak`): días consecutivos con algún hábito; cuenta `h.log`.
-- **ACHIEVEMENTS**: ~38 logros con `check(state)` (hábitos, rachas, finanzas, deudas, metas, enfoque, tareas, intenciones, tropiezos, árbol de metas, presupuesto, tasa de ahorro, planificación, consumibles, metas financieras, calendario/objetivos, congelar días, lista de compras, sub-hábitos, regla de 2 minutos, matriz de Eisenhower, tema/acento, sync en la nube, respaldo). Ver **regla de oro** en la sección 6.1: toda función nueva necesita su logro.
+- **ACHIEVEMENTS**: 42 logros con `check(state)` (hábitos, rachas, finanzas, deudas, metas, enfoque, tareas, intenciones, tropiezos, árbol de metas, presupuesto, tasa de ahorro, planificación, consumibles, metas financieras, calendario/objetivos, congelar días, lista de compras, sub-hábitos, regla de 2 minutos, matriz de Eisenhower, tema/acento, sync en la nube, recursos web, citas). Ver **regla de oro** en la sección 6.1: toda función nueva necesita su logro.
 - Subir de nivel y desbloquear logro disparan **confeti** (fx.ts) + toast.
 
 ### 6.1 REGLA DE ORO: toda funcionalidad tiene su logro ⚠️
@@ -250,8 +252,9 @@ Al implementar cualquier funcionalidad nueva, sigue este checklist:
    - En `ACHIEVEMENTS`, comprueba con
      `check: (s) => (s.game.usedFeatures ?? []).includes('mi-feature-id')`.
    - Ejemplos ya implementados: `'theme'` (ThemePicker), `'cloud-sync'`
-     (`startSync` en useSync.ts), `'backup-export'` (exportar en Logros.tsx),
-     `'restock'` (reabastecer un consumible).
+     (`startSync` en useSync.ts), `'restock'` (reabastecer un consumible).
+     (El logro `'backup-export'` se retiró junto con la función de respaldo
+     manual, ver sección 8/Logros: ya no aplica exportar/importar JSON.)
 4. **Verifica que la acción del store llama a `checkAchievements()`** tras el
    `set(...)`. Es un error común olvidarlo (varias acciones antiguas — `addLapse`,
    `addSupply`, `addEvent`, `addCampaign`, `toggleFrozenDay`, `freezeRange`,
@@ -311,7 +314,7 @@ datos (sección 12).
 - **Finanzas** (mes seleccionable con ◀▶): stats (Balance/Ingresos/Gastos/Tasa de ahorro) en `currencyShort`; **Análisis** (promedio diario, mayor gasto, evaluación de ahorro); **Libro a 2 columnas**: Ingresos (verde, izquierda) | divisor | Gastos (rojo, derecha) con "+" para agregar en cada columna, **filtro por categoría**, totales vivos, borrar en hover; **Presupuestos** por categoría (barra verde/ámbar/rojo + excedente); gráfico Ingresos vs Gastos (últimos 6 meses); **Deudas** (abonar); **Cosas por acabarse** (consumibles con días restantes, "Compré" registra gasto); **Lista de compras** pendientes; movimientos del mes.
 - **Estadísticas**: puntualidad de metas (antes/en tiempo/después + % puntual); días congelados (total/mes + advertencia si abusas); cumplimiento por hábito histórico (%, cumplidos/parciales/no cumplidos/total/congelados + racha).
 - **Recursos**: guarda páginas web que aportan valor (`Resource`: title, url, description, category libre). Tarjetas agrupadas por categoría (colores fijos para Productividad/Finanzas/Salud/Estudio/General, gris para categorías nuevas), muestra el hostname y botón "Visitar" (`target="_blank" rel="noopener noreferrer"`). El campo URL acepta sin `https://` (se normaliza al guardar). Es, en esencia, una libreta de marcadores curados con explicación de "para qué sirve" cada uno.
-- **Citas**: guarda citas célebres para inspirarse (`Quote`: text, author, tag libre, favorite). "Cita del día" destacada arriba (aleatoria estable por día: prioriza favoritas si hay alguna, usa `Date.now()/86400000 % pool.length` para que no cambie durante el día). Modal "Sugeridas" con un banco fijo de ~8 frases (Aristóteles, Séneca, Epicteto, etc.) para agregar con un toque sin escribir nada. Filtro Todas/⭐Favoritas. Categorías con colores fijos (Disciplina, Estoicismo, Éxito, Motivación, Sabiduría, Perseverancia, General).
+- **Citas**: guarda citas célebres para inspirarse (`Quote`: text, author OPCIONAL, favorite). Sin categorías y sin banco de sugeridas (se quitaron a propósito: el usuario solo quiere las frases que a él le marcan, escritas por él mismo). "Cita del día" destacada arriba (aleatoria estable por día: prioriza favoritas si hay alguna, usa `Date.now()/86400000 % pool.length` para que no cambie durante el día). Si no hay autor, la tarjeta muestra "Autor desconocido" en vez de dejarlo vacío. Filtro Todas/⭐Favoritas.
 - **Logros & Progreso**: **Jefe Final** (barra de vida = logros desbloqueados/total, avatar evoluciona 🐉→👹→😈→🏆); stats (Nivel, XP, Logros, Racha); **Marcador Mes/Año** con anillos de Realización (verde) y Fallas (rojo) + desglose por categoría + tropiezos; **Trofeos** (grid de logros); **Reiniciar** todo.
   - Ya **no** existe exportar/importar respaldo manual (JSON) ni el logro
     "backup-master": todo se guarda automáticamente en Supabase (sección 11), así
@@ -424,7 +427,7 @@ persistente (`persistSession` + `autoRefreshToken`): se loguea una vez por dispo
 - Todo en **español**, moneda **COP**, fechas ISO `yyyy-mm-dd`, semana **Lunes=0..Domingo=6**.
 - **Toda funcionalidad nueva o existente debe tener un logro en `ACHIEVEMENTS`** (ver sección 6.1, regla de oro). No es opcional: es tan obligatorio como subir la versión del persist. Los Trofeos son el mapa de funcionalidades de la app.
 - Fechas: **nunca `Date.toISOString()`** para "hoy"/fechas del usuario (adelanta el día por la conversión a UTC). Usar siempre `todayISO()`/`toISO()` de `utils/date.ts`, que usan los componentes LOCALES del dispositivo.
-- Persistencia: al añadir campos a entidades, **subir version** en `useStore` persist y añadir migración; incluir el campo en `importState` y en el `exportData` de Logros.
+- Persistencia: al añadir campos a entidades, **subir version** en `useStore` persist y añadir migración; incluir el campo en `importState` (no hay export/import manual de respaldo, se eliminó: todo vive en Supabase).
 - Toda acción del store que agrega/cambia datos relevantes para un logro debe terminar llamando `checkAchievements()`. Para funciones sin datos propios (preferencias, integraciones), usar `markFeatureUsed('id')` en vez de inventar un campo nuevo en `AppState`.
 - Mantener **conexión entre componentes** (el plan, calendario, enfoque, hábitos y metas comparten el mismo estado; cambios se reflejan en todas partes). Es el foco del usuario.
 - `npm run build` debe pasar limpio (TS estricto). No dejar imports sin usar.
