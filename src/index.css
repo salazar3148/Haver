@@ -2232,8 +2232,9 @@ h3 {
 }
 
 /* =========================================================================
-   TABLERO (corcho) — un corcho real: marco de madera, textura de corcho,
-   notas adhesivas, papeles con chinchetas, listas y polaroids arrastrables.
+   TABLERO — lienzo infinito tipo Excalidraw: fondo día (blanco) / noche
+   (negro) con rejilla de puntos, paneo + zoom (rueda y gestos táctiles),
+   notas adhesivas, papeles, checklists y polaroids arrastrables.
    ========================================================================= */
 
 .board-toolbar {
@@ -2243,91 +2244,136 @@ h3 {
   align-items: center;
   margin-bottom: 16px;
 }
-.board-hint {
-  font-size: 12px;
-  color: var(--muted);
+
+/* Interruptor Día / Noche del tablero */
+.board-theme-toggle {
   margin-left: auto;
-  opacity: 0.85;
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+}
+.board-theme-toggle button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.board-theme-toggle button.active {
+  background: var(--grad);
+  color: #fff;
+  box-shadow: var(--shadow);
 }
 
-/* Marco de madera que rodea el corcho */
-.cork-frame {
+/* Viewport: ventana fija que recorta el lienzo desplazable */
+.board-viewport {
   position: relative;
-  border-radius: 18px;
-  padding: 16px;
-  background:
-    repeating-linear-gradient(
-      92deg,
-      #6b4423 0px,
-      #7c5230 3px,
-      #5c3a1e 6px,
-      #6b4423 10px
-    );
-  box-shadow:
-    0 24px 60px -18px rgba(0, 0, 0, 0.75),
-    0 2px 0 rgba(255, 255, 255, 0.08) inset,
-    0 -3px 8px rgba(0, 0, 0, 0.5) inset;
-}
-.cork-frame::before {
-  /* bisel interior del marco */
-  content: '';
-  position: absolute;
-  inset: 12px;
-  border-radius: 8px;
-  box-shadow:
-    0 3px 10px rgba(0, 0, 0, 0.55) inset,
-    0 -1px 0 rgba(255, 255, 255, 0.06) inset;
-  pointer-events: none;
-  z-index: 2;
-}
-
-/* La superficie de corcho */
-.corkboard {
-  position: relative;
-  height: calc(100vh - 260px);
-  min-height: 540px;
-  border-radius: 6px;
+  height: calc(100vh - 250px);
+  min-height: 520px;
+  border-radius: var(--radius);
   overflow: hidden;
   touch-action: none;
-  background-color: #c69a5b;
-  background-image:
-    radial-gradient(circle at 20% 30%, rgba(120, 78, 36, 0.5) 0 1.5px, transparent 2px),
-    radial-gradient(circle at 62% 18%, rgba(90, 58, 26, 0.45) 0 1.5px, transparent 2px),
-    radial-gradient(circle at 82% 62%, rgba(120, 78, 36, 0.5) 0 1.5px, transparent 2px),
-    radial-gradient(circle at 35% 78%, rgba(90, 58, 26, 0.4) 0 1.5px, transparent 2px),
-    radial-gradient(circle at 8% 88%, rgba(120, 78, 36, 0.45) 0 1.5px, transparent 2px),
-    radial-gradient(circle at 50% 50%, rgba(160, 120, 70, 0.6) 0 1px, transparent 2px),
-    radial-gradient(ellipse at 30% 20%, rgba(214, 173, 110, 0.7), transparent 60%),
-    linear-gradient(135deg, #cda366, #b9884c);
-  background-size:
-    17px 17px, 23px 23px, 19px 19px, 29px 29px, 13px 13px, 11px 11px, 100% 100%, 100% 100%;
-  box-shadow: 0 0 80px rgba(60, 38, 15, 0.55) inset;
+  cursor: grab;
+  border: 1px solid var(--border);
+  box-shadow: 0 24px 60px -22px rgba(0, 0, 0, 0.7);
 }
-/* grano fino sobre el corcho */
-.corkboard::before {
-  content: '';
+.board-viewport:active {
+  cursor: grabbing;
+}
+/* Tema DÍA (blanco) */
+.board-viewport[data-board='light'] {
+  background-color: #f7f8fa;
+  --grid-dot: rgba(20, 25, 40, 0.16);
+  --grid-glow: rgba(0, 0, 0, 0.04);
+}
+/* Tema NOCHE (negro) */
+.board-viewport[data-board='dark'] {
+  background-color: #0b0d12;
+  --grid-dot: rgba(255, 255, 255, 0.14);
+  --grid-glow: rgba(255, 255, 255, 0.03);
+}
+
+/* Lienzo grande que se traslada/escala */
+.board-canvas {
   position: absolute;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.35'/%3E%3C/svg%3E");
-  mix-blend-mode: multiply;
-  opacity: 0.28;
-  pointer-events: none;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  background-image: radial-gradient(var(--grid-dot) 1.4px, transparent 1.4px);
+  background-size: 28px 28px;
+}
+.board-viewport[data-board='light'] .board-canvas {
+  box-shadow: 0 0 0 100vmax var(--grid-glow) inset;
 }
 
 .board-empty {
   position: absolute;
   inset: 0;
   display: grid;
-  place-items: center;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
   pointer-events: none;
+  text-align: center;
+  padding: 20px;
 }
-.board-empty .empty-emoji {
-  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.4));
+.board-empty-emoji {
+  font-size: 48px;
+  opacity: 0.85;
 }
-.board-empty .empty-text {
-  color: #5c3a1e;
+.board-empty-text {
+  color: var(--muted);
   font-weight: 700;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+  max-width: 320px;
+}
+.board-viewport[data-board='dark'] .board-empty-text {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Controles de zoom flotantes (esquina inferior) */
+.board-controls {
+  position: absolute;
+  bottom: 14px;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  z-index: 10;
+}
+.board-controls button {
+  min-width: 34px;
+  height: 34px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  border-radius: 8px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 12px;
+  padding: 0 6px;
+}
+.board-controls button:hover {
+  background: var(--panel-hover);
+}
+.board-controls .zoom-label {
+  min-width: 48px;
 }
 
 /* ---- Nota base ---- */
@@ -2685,14 +2731,28 @@ h3 {
 }
 
 @media (max-width: 600px) {
-  .corkboard {
-    height: calc(100vh - 300px);
-    min-height: 460px;
+  .board-viewport {
+    height: calc(100vh - 250px);
+    min-height: 420px;
   }
-  .board-hint {
-    display: none;
+  .board-toolbar .btn {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+  .board-theme-toggle {
+    margin-left: 0;
   }
   .note {
-    width: 150px;
+    width: 168px;
   }
+}
+
+/* En modo noche las notas necesitan un halo claro para despegarse del negro */
+.board-viewport[data-board='dark'] .note-sticky,
+.board-viewport[data-board='dark'] .note-paper,
+.board-viewport[data-board='dark'] .note-todo,
+.board-viewport[data-board='dark'] .note-photo {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 14px 30px -10px rgba(0, 0, 0, 0.85);
 }

@@ -1,18 +1,46 @@
-import { useRef, useState, useEffect } from 'react'
-import { StickyNote, FileText, ListChecks, Image as ImageIcon, Trash2, Pencil, Palette, Plus, X } from 'lucide-react'
+import { useRef, useState, useEffect, useCallback } from 'react'
+import {
+  StickyNote,
+  FileText,
+  ListChecks,
+  Image as ImageIcon,
+  Trash2,
+  Pencil,
+  Palette,
+  Plus,
+  X,
+  Sun,
+  Moon,
+  ZoomIn,
+  ZoomOut,
+  Maximize,
+} from 'lucide-react'
 import { useStore } from '../store/useStore'
+import { useUi } from '../store/useUi'
 import type { BoardNote, NoteKind } from '../store/types'
-import { Empty } from '../components/ui'
 import { XpWidget } from '../App'
 
 const NOTE_COLORS = ['#ffe082', '#ff9db0', '#8fd0ff', '#a8e6a1', '#ffb877', '#d3b4ff']
 const PHOTO_EMOJIS = ['📸', '🌅', '🏔️', '🎯', '💡', '❤️', '🔥', '⭐', '🎸', '🐉', '🌱', '🏆']
 
 const KIND_META: Record<NoteKind, { label: string; icon: typeof StickyNote }> = {
-  sticky: { label: 'Nota adhesiva', icon: StickyNote },
+  sticky: { label: 'Nota', icon: StickyNote },
   paper: { label: 'Papel', icon: FileText },
-  todo: { label: 'Pendientes', icon: ListChecks },
+  todo: { label: 'Checklist', icon: ListChecks },
   photo: { label: 'Foto', icon: ImageIcon },
+}
+
+// Lienzo grande y "extensible" que se recorre con paneo/zoom (tipo Excalidraw)
+const CANVAS_W = 4000
+const CANVAS_H = 3000
+const MIN_ZOOM = 0.35
+const MAX_ZOOM = 2.5
+const clampZoom = (z: number) => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, z))
+
+interface View {
+  x: number
+  y: number
+  zoom: number
 }
 
 export function Tablero() {
@@ -27,19 +55,109 @@ export function Tablero() {
     toggleNoteItem,
     removeNoteItem,
   } = useStore()
-  const boardRef = useRef<HTMLDivElement>(null)
+  const boardTheme = useUi((s) => s.boardTheme)
+  const setBoardTheme = useUi((s) => s.setBoardTheme)
+
+  const viewportRef = useRef<HTMLDivElement>(null)
+  const [view, setView] = useState<View>({ x: 40, y: 40, zoom: 1 })
+
+  // Punteros activos (para gestos táctiles: 1 dedo = paneo, 2 dedos = pinch-zoom)
+  const pointers = useRef<Map<number, { x: number; y: number }>>(new Map())
+  const panRef = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null)
+  const pinchRef = useRef<{ dist: number; zoom: number; mx: number; my: number; ox: number; oy: number } | null>(null)
 
   const create = (kind: NoteKind) => {
-    const board = boardRef.current
-    const bw = board?.clientWidth ?? 800
-    const bh = board?.clientHeight ?? 600
-    const noteW = 180
-    // Aparece cerca del centro con un pequeño desorden para que no se apilen exactas
-    const jitter = () => (Math.random() - 0.5) * 120
-    const x = Math.max(20, Math.min(bw - noteW - 20, bw / 2 - noteW / 2 + jitter()))
-    const y = Math.max(20, Math.min(bh - 160, bh / 2 - 90 + jitter()))
+    const vp = viewportRef.current
+    const rect = vp?.getBoundingClientRect()
+    const w = rect?.width ?? 800
+    const h = rect?.height ?? 600
+    // centro del viewport → coordenadas del lienzo, con leve desorden
+    const jitter = () => (Math.random() - 0.5) * 90
+    const cx = (w / 2 - view.x) / view.zoom - 90 + jitter()
+    const cy = (h / 2 - view.y) / view.zoom - 70 + jitter()
+    const x = Math.max(0, Math.min(CANVAS_W - 200, Math.round(cx)))
+    const y = Math.max(0, Math.min(CANVAS_H - 160, Math.round(cy)))
     addNote(kind, x, y)
   }
+
+  // ---- Paneo con 1 puntero / pinch con 2 ----
+  const onPointerDown = (e: React.PointerEvent) => {
+    if ((e.target as HTMLElement).closest('.note')) return
+    const vp = viewportRef.current
+    if (!vp) return
+    vp.setPointerCapture(e.pointerId)
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    if (pointers.current.size === 1) {
+      panRef.current = { sx: e.clientX, sy: e.clientY, ox: view.x, oy: view.y }
+      pinchRef.current = null
+    } else if (pointers.current.size === 2) {
+      const pts = [...pointers.current.values()]
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y)
+      const rect = vp.getBoundingClientRect()
+      const mx = (pts[0].x + pts[1].x) / 2 - rect.left
+      const my = (pts[0].y + pts[1].y) / 2 - rect.top
+      pinchRef.current = { dist, zoom: view.zoom, mx, my, ox: view.x, oy: view.y }
+      panRef.current = null
+    }
+  }
+
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!pointers.current.has(e.pointerId)) return
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    if (pinchRef.current && pointers.current.size >= 2) {
+      const pts = [...pointers.current.values()]
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y)
+      const ps = pinchRef.current
+      const z = clampZoom(ps.zoom * (dist / (ps.dist || 1)))
+      const canvasX = (ps.mx - ps.ox) / ps.zoom
+      const canvasY = (ps.my - ps.oy) / ps.zoom
+      setView({ x: ps.mx - canvasX * z, y: ps.my - canvasY * z, zoom: z })
+    } else if (panRef.current) {
+      const p = panRef.current
+      setView((v) => ({ ...v, x: p.ox + (e.clientX - p.sx), y: p.oy + (e.clientY - p.sy) }))
+    }
+  }
+
+  const endPointer = (e: React.PointerEvent) => {
+    pointers.current.delete(e.pointerId)
+    if (pointers.current.size < 2) pinchRef.current = null
+    if (pointers.current.size === 0) panRef.current = null
+  }
+
+  // ---- Zoom con rueda (desktop), centrado en el cursor ----
+  const zoomAt = useCallback((mx: number, my: number, factor: number) => {
+    setView((v) => {
+      const z = clampZoom(v.zoom * factor)
+      const canvasX = (mx - v.x) / v.zoom
+      const canvasY = (my - v.y) / v.zoom
+      return { x: mx - canvasX * z, y: my - canvasY * z, zoom: z }
+    })
+  }, [])
+
+  useEffect(() => {
+    const vp = viewportRef.current
+    if (!vp) return
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const rect = vp.getBoundingClientRect()
+      if (e.ctrlKey || Math.abs(e.deltaY) > 0) {
+        const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12
+        zoomAt(e.clientX - rect.left, e.clientY - rect.top, factor)
+      }
+    }
+    vp.addEventListener('wheel', onWheel, { passive: false })
+    return () => vp.removeEventListener('wheel', onWheel)
+  }, [zoomAt])
+
+  const zoomBtn = (dir: 1 | -1) => {
+    const vp = viewportRef.current
+    const rect = vp?.getBoundingClientRect()
+    const mx = (rect?.width ?? 800) / 2
+    const my = (rect?.height ?? 600) / 2
+    zoomAt(mx, my, dir > 0 ? 1.2 : 1 / 1.2)
+  }
+
+  const resetView = () => setView({ x: 40, y: 40, zoom: 1 })
 
   return (
     <>
@@ -47,7 +165,8 @@ export function Tablero() {
         <div>
           <div className="page-title">Tablero</div>
           <div className="page-sub">
-            Tu corcho personal: fija notas, pendientes y recuerdos. Arrastra para acomodarlos a tu gusto.
+            Un lienzo infinito para tus notas y pendientes. Arrastra las notas, desplázate por el
+            fondo y usa la rueda o dos dedos para acercar.
           </div>
         </div>
         <XpWidget />
@@ -62,21 +181,46 @@ export function Tablero() {
             </button>
           )
         })}
-        <span className="board-hint">Doble clic en una nota para escribir · arrástrala para moverla</span>
+        <div className="board-theme-toggle">
+          <button
+            className={boardTheme === 'light' ? 'active' : ''}
+            onClick={() => setBoardTheme('light')}
+            title="Modo día (blanco)"
+          >
+            <Sun size={15} /> Día
+          </button>
+          <button
+            className={boardTheme === 'dark' ? 'active' : ''}
+            onClick={() => setBoardTheme('dark')}
+            title="Modo noche (negro)"
+          >
+            <Moon size={15} /> Noche
+          </button>
+        </div>
       </div>
 
-      <div className="cork-frame">
-        <div className="corkboard" ref={boardRef}>
-          {boardNotes.length === 0 && (
-            <div className="board-empty">
-              <Empty emoji="📌" text="Tu corcho está vacío. Fija tu primera nota arriba." />
-            </div>
-          )}
+      <div
+        className="board-viewport"
+        data-board={boardTheme}
+        ref={viewportRef}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endPointer}
+        onPointerCancel={endPointer}
+      >
+        <div
+          className="board-canvas"
+          style={{
+            width: CANVAS_W,
+            height: CANVAS_H,
+            transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})`,
+          }}
+        >
           {boardNotes.map((n) => (
             <NoteCard
               key={n.id}
               note={n}
-              boardRef={boardRef}
+              zoom={view.zoom}
               onMove={moveNote}
               onFront={bringNoteToFront}
               onUpdate={updateNote}
@@ -87,6 +231,30 @@ export function Tablero() {
             />
           ))}
         </div>
+
+        {boardNotes.length === 0 && (
+          <div className="board-empty">
+            <div className="board-empty-emoji">🧲</div>
+            <div className="board-empty-text">
+              Tu tablero está vacío. Crea una nota con los botones de arriba.
+            </div>
+          </div>
+        )}
+
+        <div className="board-controls">
+          <button onClick={() => zoomBtn(-1)} title="Alejar">
+            <ZoomOut size={16} />
+          </button>
+          <button className="zoom-label" onClick={resetView} title="Restablecer vista">
+            {Math.round(view.zoom * 100)}%
+          </button>
+          <button onClick={() => zoomBtn(1)} title="Acercar">
+            <ZoomIn size={16} />
+          </button>
+          <button onClick={resetView} title="Centrar">
+            <Maximize size={16} />
+          </button>
+        </div>
       </div>
     </>
   )
@@ -94,7 +262,7 @@ export function Tablero() {
 
 function NoteCard({
   note,
-  boardRef,
+  zoom,
   onMove,
   onFront,
   onUpdate,
@@ -104,7 +272,7 @@ function NoteCard({
   onRemoveItem,
 }: {
   note: BoardNote
-  boardRef: React.RefObject<HTMLDivElement>
+  zoom: number
   onMove: (id: string, x: number, y: number) => void
   onFront: (id: string) => void
   onUpdate: (id: string, patch: Partial<BoardNote>) => void
@@ -123,15 +291,13 @@ function NoteCard({
   useEffect(() => setDraft(note.text), [note.text])
 
   const startDrag = (e: React.PointerEvent) => {
-    // No arrastrar si se toca un control interactivo
-    if ((e.target as HTMLElement).closest('.note-ui, textarea, input, .chk-row, button')) return
+    // Evita que el gesto llegue al lienzo (paneo). Los controles internos no arrastran.
+    e.stopPropagation()
+    if ((e.target as HTMLElement).closest('.note-ui, textarea, input, .chk-row, .chk-add, button, .note-colors')) return
     e.preventDefault()
     onFront(note.id)
-    const board = boardRef.current
     const el = ref.current
-    if (!board || !el) return
-    const bw = board.clientWidth
-    const bh = board.clientHeight
+    if (!el) return
     const nw = el.offsetWidth
     const nh = el.offsetHeight
     const startX = e.clientX
@@ -143,8 +309,8 @@ function NoteCard({
     el.setPointerCapture(e.pointerId)
     setDragging(true)
     const move = (ev: PointerEvent) => {
-      nx = Math.max(0, Math.min(bw - nw, origX + (ev.clientX - startX)))
-      ny = Math.max(0, Math.min(bh - nh, origY + (ev.clientY - startY)))
+      nx = Math.max(0, Math.min(CANVAS_W - nw, origX + (ev.clientX - startX) / zoom))
+      ny = Math.max(0, Math.min(CANVAS_H - nh, origY + (ev.clientY - startY) / zoom))
       el.style.left = `${nx}px`
       el.style.top = `${ny}px`
     }
@@ -196,11 +362,7 @@ function NoteCard({
           </button>
         )}
         {note.kind !== 'photo' && (
-          <button
-            className="note-ui-btn"
-            title="Color"
-            onClick={() => setShowColors((v) => !v)}
-          >
+          <button className="note-ui-btn" title="Color" onClick={() => setShowColors((v) => !v)}>
             <Palette size={13} />
           </button>
         )}
@@ -227,7 +389,14 @@ function NoteCard({
 
       {note.kind === 'photo' ? (
         <>
-          <div className="photo-pic" onDoubleClick={(e) => { e.stopPropagation(); cycleEmoji() }} title="Doble clic: cambiar imagen">
+          <div
+            className="photo-pic"
+            onDoubleClick={(e) => {
+              e.stopPropagation()
+              cycleEmoji()
+            }}
+            title="Doble clic: cambiar imagen"
+          >
             <span>{note.emoji || '📸'}</span>
           </div>
           {editing ? (
@@ -281,7 +450,7 @@ function NoteCard({
           <div className="chk-add">
             <input
               value={newItem}
-              placeholder="Agregar…"
+              placeholder="Agregar ítem…"
               onChange={(e) => setNewItem(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && newItem.trim()) {

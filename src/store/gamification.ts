@@ -420,8 +420,8 @@ export const ACHIEVEMENTS: Achievement[] = [
   // ── Tablero (corcho): notas, pendientes y polaroids fijados con chinchetas.
   {
     id: 'board-first',
-    name: 'Primera chincheta',
-    desc: 'Fija tu primera nota en el Tablero (tu corcho personal)',
+    name: 'Primera nota',
+    desc: 'Crea tu primera nota en el Tablero (tu lienzo personal)',
     icon: '📌',
     check: (s) => (s.boardNotes ?? []).length >= 1,
   },

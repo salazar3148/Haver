@@ -88,7 +88,7 @@ src/
     Estadisticas.tsx      # puntualidad de metas, congelados, cumplimiento por hábito
     Recursos.tsx          # páginas web que aportan valor: título, URL, descripción y categoría
     Citas.tsx             # citas célebres guardadas para inspirarse: frase, autor, categoría, favoritas
-    Tablero.tsx           # "Tablero": corcho realista con notas adhesivas/papel/pendientes/foto, arrastrables (drag libre)
+    Tablero.tsx           # "Tablero": lienzo infinito tipo Excalidraw (paneo+zoom, día/noche) con notas adhesivas/papel/checklist/foto arrastrables
     Logros.tsx            # "Jefe Final" (barra de logros) + marcador mes/año + trofeos (= mapa de funcionalidades) + reset
   utils/
     date.ts               # utilidades de fecha (ISO LOCAL del dispositivo — nunca UTC, ver nota abajo)
@@ -333,19 +333,31 @@ datos (sección 12).
 - **Estadísticas**: puntualidad de metas (antes/en tiempo/después + % puntual); días congelados (total/mes + advertencia si abusas); cumplimiento por hábito histórico (%, cumplidos/parciales/no cumplidos/total/congelados + racha).
 - **Recursos**: guarda páginas web que aportan valor (`Resource`: title, url, description, category libre). Tarjetas agrupadas por categoría (colores fijos para Productividad/Finanzas/Salud/Estudio/General, gris para categorías nuevas), muestra el hostname y botón "Visitar" (`target="_blank" rel="noopener noreferrer"`). El campo URL acepta sin `https://` (se normaliza al guardar). Es, en esencia, una libreta de marcadores curados con explicación de "para qué sirve" cada uno.
 - **Citas**: guarda citas célebres para inspirarse (`Quote`: text, author OPCIONAL, favorite). Sin categorías y sin banco de sugeridas (se quitaron a propósito: el usuario solo quiere las frases que a él le marcan, escritas por él mismo). "Cita del día" destacada arriba (aleatoria estable por día: prioriza favoritas si hay alguna, usa `Date.now()/86400000 % pool.length` para que no cambie durante el día). Si no hay autor, la tarjeta muestra "Autor desconocido" en vez de dejarlo vacío. Filtro Todas/⭐Favoritas.
-- **Tablero** (corcho): imita un tablero de corcho REAL. Marco de madera + superficie de
-  corcho (texturas 100% CSS: radial-gradients de motas + grano SVG feTurbulence). Se fijan
-  4 tipos de nota (`BoardNote`): **sticky** (post-it con esquina doblada, sin chincheta),
-  **paper** (papel de cuaderno con líneas y margen rojo, chincheta), **todo** (lista de
-  pendientes con checklist: agregar/tachar/borrar ítems) y **photo** (polaroid: "imagen" =
-  emoji que se cambia con doble clic sobre la foto, + pie de foto). Cada nota tiene color de
-  papel y color de chincheta aleatorios (editables: paleta al pasar el cursor), rotación leve
-  aleatoria y **posición libre**: se **arrastran** por todo el corcho (pointer events, se
-  clampa a los bordes; `moveNote` solo al soltar; `bringNoteToFront` al tomarla para el
-  z-index). Doble clic en una nota → editar texto inline (fuente manuscrita **Caveat**, añadida
-  en index.html). Barra superior para crear cada tipo. La barra de acciones por nota (editar/
-  color/borrar) aparece en hover. Estado en `boardNotes` (persist v15). CSS: sección "TABLERO
-  (corcho)" al final de index.css; respeta `[data-reduce]`.
+- **Tablero**: **lienzo infinito tipo Excalidraw**. Un `.board-viewport` (ventana que recorta,
+  `overflow:hidden`, `touch-action:none`) contiene un `.board-canvas` grande (CANVAS_W 4000 ×
+  CANVAS_H 3000) que se **traslada y escala** vía `transform: translate(x,y) scale(zoom)`
+  (estado local `view={x,y,zoom}` en Tablero.tsx). **Paneo**: arrastrar el fondo con 1 puntero
+  (mouse o 1 dedo). **Zoom**: rueda del mouse centrada en el cursor (listener `wheel` con
+  `passive:false`), botones flotantes +/−/%/centrar (`.board-controls`) y **pinch con 2 dedos**
+  en móvil (se rastrean los punteros en `pointers` ref; `panRef`/`pinchRef` guardan el gesto en
+  curso). Límites de zoom 0.35–2.5. Es totalmente **compatible con celular** (pointer events +
+  touch-action none). Rejilla de puntos de fondo (`radial-gradient`) que se mueve/escala con el
+  lienzo.
+  - **Tema del tablero día/noche**: `useUi.boardTheme: 'light'|'dark'` (persist v2, con setter
+    `setBoardTheme`), aplicado como `data-board` en el viewport. Día = fondo `#f7f8fa`; Noche =
+    fondo `#0b0d12`; cambian color de la rejilla y, en noche, las notas llevan un halo claro
+    para despegarse del negro. Interruptor Día/Noche (`.board-theme-toggle`) en la barra superior.
+  - **4 tipos de nota** (`BoardNote.kind`): **sticky** (post-it, esquina doblada), **paper**
+    (papel de cuaderno con líneas y margen rojo + chincheta), **todo** (**checklist**: título +
+    ítems con palomita ✓ que se agregan/tachan/borran — acciones `addNoteItem/toggleNoteItem/
+    removeNoteItem`) y **photo** (polaroid: "imagen" = emoji que cicla con doble clic + pie).
+  - Cada nota tiene color de papel y de chincheta aleatorios (editables: paleta al pasar el
+    cursor), rotación leve y **posición libre en coordenadas del lienzo**. Se **arrastran**
+    (pointer events; el delta de pantalla se divide por `zoom`; se clampa al lienzo; `moveNote`
+    solo al soltar; `bringNoteToFront` al tomarla). `startDrag` hace `stopPropagation` para no
+    disparar el paneo. Doble clic → editar texto inline (fuente manuscrita **Caveat** en
+    index.html). Estado en `boardNotes` (persist v15). CSS: sección "TABLERO" al final de
+    index.css; respeta `[data-reduce]`.
 - **Logros & Progreso**: **Jefe Final** (barra de vida = logros desbloqueados/total, avatar evoluciona 🐉→👹→😈→🏆); stats (Nivel, XP, Logros, Racha); **Marcador Mes/Año** con anillos de Realización (verde) y Fallas (rojo) + desglose por categoría + tropiezos; **Trofeos** (grid de logros); **Reiniciar** todo.
   - Ya **no** existe exportar/importar respaldo manual (JSON) ni el logro
     "backup-master": todo se guarda automáticamente en Supabase (sección 11), así
@@ -391,8 +403,9 @@ Lista `THEMES` (en orden, el primero es default):
 `applyTheme` usa `shade()` (con clamp 0-255, OJO: antes había un bug de overflow que
 generaba colores "arcoíris"; ya corregido). `--grad = linear-gradient(135deg, primary, secondary)`.
 El acento personalizado (useUi.accent) sobrescribe el primary.
-`useUi` (clave `vida-quest-ui`, version 1) guarda themeId/accent/effects/focusMin/breakMin;
-su migrate v1 forzó `themeId='cueva'` una vez para estrenar el tema.
+`useUi` (clave `vida-quest-ui`, version 2) guarda themeId/accent/effects/focusMin/breakMin/boardTheme;
+su migrate v1 forzó `themeId='cueva'` una vez para estrenar el tema; v2 añadió `boardTheme='light'`
+(tema día/noche del Tablero).
 
 ### Componentes/clases reutilizables (en index.css)
 `.card, .card-title, .stat, .btn (+btn-primary/-danger/-ghost/-sm), .icon-btn, .chip
