@@ -2433,7 +2433,7 @@ h3 {
 /* ---- Sticky (post-it) ---- */
 .note-sticky {
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--paper) 88%, #fff) 0%, var(--paper) 14%);
+    linear-gradient(180deg, color-mix(in srgb, var(--paper) 55%, #fff) 0%, color-mix(in srgb, var(--paper) 74%, #fff) 100%);
   border-radius: 2px;
   box-shadow:
     0 1px 1px rgba(0, 0, 0, 0.15),
@@ -2706,14 +2706,27 @@ h3 {
   position: absolute;
   top: 18px;
   right: -8px;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 5px;
-  padding: 7px;
-  background: rgba(20, 20, 24, 0.92);
-  border-radius: 10px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 9px;
+  background: rgba(18, 18, 22, 0.95);
+  border-radius: 12px;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.55);
   z-index: 5;
+}
+.swatch-group-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+  margin-top: 2px;
+}
+.swatch-row {
+  display: flex;
+  gap: 5px;
 }
 .note-colors .swatch {
   width: 20px;
@@ -2721,9 +2734,15 @@ h3 {
   border-radius: 6px;
   border: 1.5px solid rgba(255, 255, 255, 0.35);
   cursor: pointer;
+  transition: transform 0.12s;
 }
 .note-colors .swatch:hover {
-  transform: scale(1.12);
+  transform: scale(1.14);
+}
+.note-colors .swatch.theme {
+  border-radius: 50%;
+  border-color: rgba(255, 255, 255, 0.75);
+  box-shadow: 0 0 7px -1px rgba(255, 255, 255, 0.5);
 }
 
 [data-reduce='true'] .note {
@@ -2747,12 +2766,101 @@ h3 {
   }
 }
 
-/* En modo noche las notas necesitan un halo claro para despegarse del negro */
+/* =========================================================================
+   MODO NOCHE — notas estilo NEÓN que combinan con el fondo oscuro. El brillo
+   toma el color propio de cada nota (--paper), así también combina con los
+   colores del tema si eliges un swatch de "Tema".
+   ========================================================================= */
+.board-viewport[data-board='dark'] .note {
+  color: #eef2ff;
+}
 .board-viewport[data-board='dark'] .note-sticky,
 .board-viewport[data-board='dark'] .note-paper,
 .board-viewport[data-board='dark'] .note-todo,
 .board-viewport[data-board='dark'] .note-photo {
+  background: linear-gradient(160deg, rgba(22, 24, 32, 0.92), rgba(11, 13, 19, 0.96));
+  border: 1.5px solid color-mix(in srgb, var(--paper) 72%, transparent);
+  border-radius: 12px;
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.08),
-    0 14px 30px -10px rgba(0, 0, 0, 0.85);
+    0 0 0 1px color-mix(in srgb, var(--paper) 28%, transparent),
+    0 0 16px -1px color-mix(in srgb, var(--paper) 60%, transparent),
+    0 0 38px -6px color-mix(in srgb, var(--paper) 45%, transparent),
+    0 16px 32px -14px rgba(0, 0, 0, 0.9);
+}
+/* Sin esquina doblada ni líneas de cuaderno en modo neón */
+.board-viewport[data-board='dark'] .note-sticky::after,
+.board-viewport[data-board='dark'] .note-paper::before {
+  display: none;
+}
+
+/* Texto con leve glow del color de la nota */
+.board-viewport[data-board='dark'] .note-text,
+.board-viewport[data-board='dark'] .todo-title,
+.board-viewport[data-board='dark'] .todo-title-view,
+.board-viewport[data-board='dark'] .photo-cap,
+.board-viewport[data-board='dark'] .photo-cap-view {
+  color: color-mix(in srgb, var(--paper) 45%, #ffffff);
+  text-shadow: 0 0 9px color-mix(in srgb, var(--paper) 40%, transparent);
+}
+.board-viewport[data-board='dark'] .todo-title,
+.board-viewport[data-board='dark'] .todo-title-view {
+  border-bottom-color: color-mix(in srgb, var(--paper) 40%, transparent);
+}
+.board-viewport[data-board='dark'] .chk-row > span {
+  color: #dfe4f2;
+}
+.board-viewport[data-board='dark'] .chk-row .done {
+  color: rgba(255, 255, 255, 0.4);
+}
+.board-viewport[data-board='dark'] .note .ph {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* Chincheta con brillo neón */
+.board-viewport[data-board='dark'] .pin {
+  box-shadow:
+    0 0 10px color-mix(in srgb, var(--pin) 80%, transparent),
+    0 3px 5px rgba(0, 0, 0, 0.5),
+    0 1px 0 rgba(255, 255, 255, 0.4) inset;
+}
+
+/* Casillas del checklist en neón */
+.board-viewport[data-board='dark'] .chk {
+  border-color: color-mix(in srgb, var(--paper) 55%, transparent);
+  background: rgba(255, 255, 255, 0.04);
+  color: color-mix(in srgb, var(--paper) 55%, #fff);
+}
+.board-viewport[data-board='dark'] .chk.on {
+  background: color-mix(in srgb, var(--paper) 22%, transparent);
+  border-color: var(--paper);
+  box-shadow: 0 0 9px -1px color-mix(in srgb, var(--paper) 65%, transparent);
+}
+.board-viewport[data-board='dark'] .chk-add {
+  border-top-color: rgba(255, 255, 255, 0.1);
+}
+.board-viewport[data-board='dark'] .chk-add input {
+  color: #eef2ff;
+}
+.board-viewport[data-board='dark'] .chk-add input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+.board-viewport[data-board='dark'] .chk-add button {
+  background: color-mix(in srgb, var(--paper) 26%, transparent);
+  color: color-mix(in srgb, var(--paper) 45%, #fff);
+}
+
+/* Campo de edición inline en modo noche */
+.board-viewport[data-board='dark'] .note-input {
+  background: rgba(255, 255, 255, 0.06);
+  color: #f2f5ff;
+}
+.board-viewport[data-board='dark'] .note-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* "Foto" del polaroid: marco con borde neón */
+.board-viewport[data-board='dark'] .photo-pic {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--paper) 40%, transparent) inset,
+    0 2px 6px rgba(0, 0, 0, 0.5) inset;
 }

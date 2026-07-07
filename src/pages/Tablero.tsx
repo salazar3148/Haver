@@ -20,8 +20,20 @@ import { useUi } from '../store/useUi'
 import type { BoardNote, NoteKind } from '../store/types'
 import { XpWidget } from '../App'
 
-const NOTE_COLORS = ['#ffe082', '#ff9db0', '#8fd0ff', '#a8e6a1', '#ffb877', '#d3b4ff']
+// Colores base: se ven pastel sobre el tablero día y como neón sobre el nocturno
+const NOTE_COLORS = ['#ffd93d', '#ff5c8a', '#3ec9ff', '#4de08a', '#ff8a3d', '#b57bff']
 const PHOTO_EMOJIS = ['📸', '🌅', '🏔️', '🎯', '💡', '❤️', '🔥', '⭐', '🎸', '🐉', '🌱', '🏆']
+
+// Colores tomados del tema activo de la app (para que las notas "combinen"
+// con el tema seleccionado). Se leen de las CSS vars en vivo.
+function getThemeColors(): string[] {
+  if (typeof window === 'undefined') return []
+  const cs = getComputedStyle(document.documentElement)
+  const raw = ['--primary', '--secondary', '--cyan']
+    .map((v) => cs.getPropertyValue(v).trim())
+    .filter(Boolean)
+  return [...new Set(raw)]
+}
 
 const KIND_META: Record<NoteKind, { label: string; icon: typeof StickyNote }> = {
   sticky: { label: 'Nota', icon: StickyNote },
@@ -373,17 +385,35 @@ function NoteCard({
 
       {showColors && (
         <div className="note-colors" onPointerDown={(e) => e.stopPropagation()}>
-          {NOTE_COLORS.map((c) => (
-            <button
-              key={c}
-              className="swatch"
-              style={{ background: c }}
-              onClick={() => {
-                onUpdate(note.id, { color: c })
-                setShowColors(false)
-              }}
-            />
-          ))}
+          <div className="swatch-group-label">Tema</div>
+          <div className="swatch-row">
+            {getThemeColors().map((c, i) => (
+              <button
+                key={'t' + i}
+                className="swatch theme"
+                style={{ background: c }}
+                title="Color de tu tema"
+                onClick={() => {
+                  onUpdate(note.id, { color: c })
+                  setShowColors(false)
+                }}
+              />
+            ))}
+          </div>
+          <div className="swatch-group-label">Colores</div>
+          <div className="swatch-row">
+            {NOTE_COLORS.map((c) => (
+              <button
+                key={c}
+                className="swatch"
+                style={{ background: c }}
+                onClick={() => {
+                  onUpdate(note.id, { color: c })
+                  setShowColors(false)
+                }}
+              />
+            ))}
+          </div>
         </div>
       )}
 

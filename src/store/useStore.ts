@@ -122,8 +122,8 @@ const initial: AppState = {
   game: { xp: 0, achievements: [], lastActiveDate: todayISO(), usedFeatures: [] },
 }
 
-// Paleta de colores de papel para el tablero (tonos "post-it" reales)
-const NOTE_COLORS = ['#ffe082', '#ff9db0', '#8fd0ff', '#a8e6a1', '#ffb877', '#d3b4ff']
+// Paleta de colores de papel para el tablero (pastel de día, neón de noche)
+const NOTE_COLORS = ['#ffd93d', '#ff5c8a', '#3ec9ff', '#4de08a', '#ff8a3d', '#b57bff']
 // Colores de chincheta
 const PIN_COLORS = ['#e5484d', '#f5a524', '#3b82f6', '#22c55e', '#a855f7', '#ec4899']
 const pick = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)]

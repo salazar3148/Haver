@@ -351,8 +351,16 @@ datos (sección 12).
     (papel de cuaderno con líneas y margen rojo + chincheta), **todo** (**checklist**: título +
     ítems con palomita ✓ que se agregan/tachan/borran — acciones `addNoteItem/toggleNoteItem/
     removeNoteItem`) y **photo** (polaroid: "imagen" = emoji que cicla con doble clic + pie).
-  - Cada nota tiene color de papel y de chincheta aleatorios (editables: paleta al pasar el
-    cursor), rotación leve y **posición libre en coordenadas del lienzo**. Se **arrastran**
+  - **Estilo de las notas según el tablero**: en modo DÍA se ven como papel pastel; en modo
+    NOCHE adoptan un look **neón/glass** (fondo oscuro translúcido + borde y glow que toman el
+    color propio de la nota `--paper` vía `color-mix`, texto con leve resplandor, chincheta y
+    checklist con brillo). Un solo color por nota (`--paper`) genera ambos looks. El selector de
+    color (paleta al pasar el cursor) tiene dos grupos: **"Tema"** (swatches leídos en vivo de las
+    CSS vars `--primary/--secondary/--cyan` para que la nota combine con el tema activo) y
+    **"Colores"** (`NOTE_COLORS`, tonos que se ven pastel de día y neón de noche). `getThemeColors()`
+    en Tablero.tsx lee las vars con `getComputedStyle`.
+  - Cada nota tiene color de papel y de chincheta aleatorios (editables), rotación leve y
+    **posición libre en coordenadas del lienzo**. Se **arrastran**
     (pointer events; el delta de pantalla se divide por `zoom`; se clampa al lienzo; `moveNote`
     solo al soltar; `bringNoteToFront` al tomarla). `startDrag` hace `stopPropagation` para no
     disparar el paneo. Doble clic → editar texto inline (fuente manuscrita **Caveat** en
