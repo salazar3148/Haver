@@ -1,5 +1,6 @@
 import { Modal } from './ui'
 import { useUi } from '../store/useUi'
+import { useStore } from '../store/useStore'
 import { THEMES } from '../store/themes'
 import { Sparkles } from 'lucide-react'
 
@@ -7,6 +8,7 @@ const ACCENTS = ['#8b5cf6', '#22d3ee', '#34d399', '#fbbf24', '#fb7185', '#f0abfc
 
 export function ThemePicker({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { themeId, accent, effects, setTheme, setAccent, toggleEffects } = useUi()
+  const markFeatureUsed = useStore((s) => s.markFeatureUsed)
 
   return (
     <Modal open={open} onClose={onClose} title="Personaliza tu experiencia">
@@ -18,7 +20,7 @@ export function ThemePicker({ open, onClose }: { open: boolean; onClose: () => v
           <button
             key={t.id}
             className={`theme-tile ${themeId === t.id ? 'active' : ''}`}
-            onClick={() => setTheme(t.id)}
+            onClick={() => { setTheme(t.id); markFeatureUsed('theme') }}
           >
             <div
               className="theme-preview"
@@ -49,7 +51,7 @@ export function ThemePicker({ open, onClose }: { open: boolean; onClose: () => v
             key={c}
             className={`accent-swatch ${accent === c ? 'active' : ''}`}
             style={{ background: c, color: c }}
-            onClick={() => setAccent(c)}
+            onClick={() => { setAccent(c); markFeatureUsed('theme') }}
           />
         ))}
       </div>

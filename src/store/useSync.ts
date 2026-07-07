@@ -110,6 +110,7 @@ export function startSync(uid: string, email: string | null) {
   if (!supabaseEnabled) return
   userId = uid
   useSync.getState().set({ email })
+  useStore.getState().markFeatureUsed('cloud-sync')
   pullRemote()
   unsub = useStore.subscribe(() => {
     if (applyingRemote) return

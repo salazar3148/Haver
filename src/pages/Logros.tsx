@@ -42,7 +42,7 @@ function Ring({ pct, color, value, label }: { pct: number; color: string; value:
 
 export function Logros() {
   const state = useStore()
-  const { game, habits, resetAll, importState } = state
+  const { game, habits, resetAll, importState, markFeatureUsed } = state
   const [confirm, setConfirm] = useState(false)
   const [period, setPeriod] = useState<'mes' | 'año'>('mes')
   const [msg, setMsg] = useState('')
@@ -63,7 +63,7 @@ export function Logros() {
   const exportData = () => {
     const { transactions, debts, budgets, habits, goals, tasks, focus, lapses, plans, supplies, shopping, game } = useStore.getState()
     const payload = {
-      app: 'vida-quest',
+      app: 'haver',
       version: 7,
       exportedAt: new Date().toISOString(),
       data: { transactions, debts, budgets, habits, goals, tasks, focus, lapses, plans, supplies, shopping, game },
@@ -72,9 +72,10 @@ export function Logros() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `vida-quest-${todayISO()}.json`
+    a.download = `haver-${todayISO()}.json`
     a.click()
     URL.revokeObjectURL(url)
+    markFeatureUsed('backup-export')
     setMsg('✅ Respaldo descargado. Guárdalo en tu nube para verlo en otros equipos.')
   }
   const onImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -89,7 +90,7 @@ export function Logros() {
         importState(data)
         setMsg('✅ Datos importados correctamente.')
       } catch {
-        setMsg('❌ El archivo no es un respaldo válido de Vida Quest.')
+        setMsg('❌ El archivo no es un respaldo válido de Haver.')
       }
     }
     reader.readAsText(file)

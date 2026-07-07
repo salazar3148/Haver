@@ -37,9 +37,11 @@ export function Sidebar({ onOpenThemes }: { onOpenThemes: () => void }) {
   return (
     <aside className="sidebar">
       <div className="brand">
-        <div className="brand-logo">⚔️</div>
+        <div className="brand-logo">
+          <img src="/haver.svg" alt="Haver" width={26} height={26} />
+        </div>
         <div>
-          <div className="brand-name">Vida Quest</div>
+          <div className="brand-name">Haver</div>
           <div className="brand-sub">Sube de nivel tu vida</div>
         </div>
       </div>

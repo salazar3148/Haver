@@ -1,4 +1,4 @@
-# Vida Quest — Contexto completo del proyecto (para continuar en otra sesión)
+# Haver — Contexto completo del proyecto (para continuar en otra sesión)
 
 > Pega este documento al inicio de una nueva sesión. Describe TODO lo construido:
 > propósito, stack, arquitectura, modelo de datos, cada pantalla/feature, el
@@ -10,7 +10,7 @@
 
 ## 1. Qué es
 
-**Vida Quest** es una app web personal (un solo dueño, multi-dispositivo) de
+**Haver** es una app web personal (un solo dueño, multi-dispositivo) de
 **hábitos, productividad y finanzas**, fuertemente **gamificada** y basada en
 **psicología/ciencia del comportamiento**. La filosofía: no solo *medir*, sino
 *hacer actuar* — planear, empezar (vencer la procrastinación), automatizar con
@@ -27,7 +27,7 @@ esté **conectado entre componentes**, y potenciar sus ideas añadiéndoles valo
 ## 2. Stack y comandos
 
 - **React 18 + TypeScript + Vite 5**
-- **Zustand 5** con middleware `persist` (estado de negocio en `localStorage`, clave `vida-quest-v1`, **version: 10** con migraciones)
+- **Zustand 5** con middleware `persist` (estado de negocio en `localStorage`, clave `vida-quest-v1`, **version: 11** con migraciones)
 - **react-router-dom 6** con `HashRouter`
 - **Recharts 2** (gráficos)
 - **lucide-react** (íconos)
@@ -61,11 +61,12 @@ src/
     useStore.ts           # store Zustand principal (datos + acciones) + persist + migraciones
     useUi.ts              # store de preferencias UI (tema, acento, efectos, focusMin, breakMin) persistido (clave vida-quest-ui, version 1)
     useSync.ts            # estado y controlador de sincronización con Supabase
-    gamification.ts       # XP, niveles, rangos, rachas, logros (ACHIEVEMENTS)
+    gamification.ts       # XP, niveles, rangos, rachas, logros (ACHIEVEMENTS) — ver regla de oro §6.1
     goals.ts              # helpers de metas (árbol, cadencia, progreso, pendientes)
     habits.ts             # helpers de hábitos (fracción por subhábitos, días aplicables)
     stats.ts              # dayCompliance, campaignSeries, computeScore, habitStats, goalPunctuality
     themes.ts             # THEMES[] (paletas) + applyTheme()
+    lapses.ts             # metadata compartida de áreas de tropiezo (LAPSE_AREAS, lapseAreaMeta)
   components/
     Sidebar.tsx           # navegación + mini-nivel + SyncBadge + botón tema
     ui.tsx                # Modal, Bar, Stat, Empty, Segmented (primitivos reutilizables)
@@ -74,26 +75,40 @@ src/
     AchievementToast.tsx  # toasts de logros + subida de nivel + confeti
     Login.tsx             # pantalla de login/registro (Supabase)
     SyncBadge.tsx         # indicador de estado de sync + logout + subir/bajar
+    LapseModal.tsx        # modal reutilizable para registrar un tropiezo (usado desde Hábitos, Enfoque, Calendario)
   pages/
     Dashboard.tsx         # resumen general (intención del día, stats, charts)
     Plan.tsx              # "Mi Día": planear hoy/mañana (intención, tareas, hábitos, metas, enfoque, ritual de cierre)
-    Calendario.tsx        # calendario mensual con anillos de cumplimiento, eventos, objetivos(campañas), congelar
-    Enfoque.tsx           # Pomodoro/deep work con ruleta de tiempo, auto-descanso, sonido, registro de distracción
+    Calendario.tsx        # calendario mensual: anillos de cumplimiento, eventos, objetivos(campañas), congelar, tropiezos (celda "rota"/agrietada)
+    Enfoque.tsx           # Pomodoro/deep work con ruleta de tiempo, auto-descanso, sonido, panel de tropiezos de hoy
     Tareas.tsx            # to-dos con Eisenhower + "Cómete la rana" + regla de 2 minutos
-    Habitos.tsx           # hábitos con subhábitos, días aplicables, marcado SOLO de hoy, gráfico semana/mes
+    Habitos.tsx           # hábitos con subhábitos, días aplicables, marcado SOLO de hoy, gráfico semana/mes, registrar tropiezo
     Metas.tsx             # árbol de metas (única/diaria/semanal) + metas financieras (dinero)
     Finanzas.tsx          # ingresos/gastos/deudas/presupuestos + libro 2 columnas + consumibles + lista de compras
-    Mejora.tsx            # registro de "tropiezos" (fallas) + analítica de detonantes
     Estadisticas.tsx      # puntualidad de metas, congelados, cumplimiento por hábito
-    Logros.tsx            # "Jefe Final" (barra de logros) + marcador mes/año + trofeos + respaldo/export-import + reset
+    Logros.tsx            # "Jefe Final" (barra de logros) + marcador mes/año + trofeos (= mapa de funcionalidades) + respaldo/export-import + reset
   utils/
-    date.ts               # utilidades de fecha (ISO, semana lun-dom, mes, año, etc.)
+    date.ts               # utilidades de fecha (ISO LOCAL del dispositivo — nunca UTC, ver nota abajo)
     format.ts             # currency (COP), currencyShort (100k/1.2M), uid, clamp
     fx.ts                 # fireConfetti (canvas), useCountUp, playChime (jingle Zelda), scaleColor (verde→rojo)
 ```
 
+> **⚠️ Ya no existe la página "Mejora".** El registro de tropiezos se movió a un
+> modal reutilizable (`LapseModal`) accesible desde **Hábitos** (botón "😵
+> Registrar tropiezo"), y también desde **Enfoque** (panel "Tropiezos de hoy",
+> útil mientras corre el temporizador) y desde el detalle del día en
+> **Calendario**. El modelo `AppState.lapses` y sus acciones (`addLapse`,
+> `removeLapse`) siguen igual; solo cambió DÓNDE se usan.
+>
+> **Fechas: nunca usar `Date.toISOString()` para "hoy".** Eso convierte a UTC y
+> en Colombia (UTC-5) adelanta el día ~5 horas antes de medianoche real. Todas
+> las fechas "hoy/ahora" deben construirse con los componentes LOCALES del
+> dispositivo vía `toISO()`/`todayISO()` en `utils/date.ts`. Si en el futuro se
+> necesita el equivalente para `hour`/`getHours()`, esos ya son locales por
+> definición y no tienen este problema.
+
 Raíz: `index.html` (fuentes + título), `netlify.toml` (deploy SPA), `.env.example`,
-`.gitignore`, `SUPABASE_SETUP.md` (guía paso a paso), `public/quest.svg` (favicon).
+`.gitignore`, `SUPABASE_SETUP.md` (guía paso a paso), `public/haver.svg` (favicon/logo: monograma "H" en gradiente rojo lava con acento de chevron "sube de nivel").
 
 ---
 
@@ -115,9 +130,14 @@ AppState = {
   events: CalendarEvent[]
   campaigns: Campaign[]         // objetivos/retos de varios días
   frozenDays: string[]          // días congelados (viaje/ausencia) — no penalizan
-  game: GameState               // {xp, achievements:string[], lastActiveDate}
+  game: GameState               // {xp, achievements:string[], lastActiveDate, usedFeatures:string[]}
 }
 ```
+
+`game.usedFeatures` guarda ids de funciones sin rastro propio en `AppState`
+(tema, sync en la nube, respaldo, reabastecer, etc.) que un logro necesita
+comprobar. Se marca con `useStore().markFeatureUsed(id)`. **Ver sección 6.1:
+regla de oro — toda funcionalidad debe tener su logro.**
 
 Detalle de entidades clave:
 
@@ -172,11 +192,16 @@ consumibles: `addSupply, restockSupply(id) (resetea lastBought y registra gasto 
 compras: `addShoppingItem, toggleShoppingItem, removeShoppingItem, clearBoughtShopping`;
 tropiezos: `addLapse, removeLapse`;
 calendario: `addEvent, toggleEvent, removeEvent, addCampaign, removeCampaign`;
-sistema: `importState(Partial<AppState>) (reemplaza todo), resetAll, _award(xp)`.
+sistema: `importState(Partial<AppState>) (reemplaza todo), resetAll, _award(xp), markFeatureUsed(feature) (marca game.usedFeatures para logros de funciones sin datos propios; ver §6.1)`.
 
 `checkAchievements()` se llama tras cambios relevantes; desbloquea logros (ya **no** dan XP).
-Migraciones por versión (v2..v10) rellenan campos nuevos sin perder datos. **Al
+**Toda acción que crea/modifica datos debe llamar `checkAchievements()` al final**
+(fue una fuente real de bugs: `addLapse`, `addSupply`, `addEvent`, `addCampaign`,
+`toggleFrozenDay`, `freezeRange` y `addShoppingItem` no la llamaban y sus logros
+nunca se desbloqueaban — ya corregido, pero revísalo en cada acción nueva).
+Migraciones por versión (v2..v11) rellenan campos nuevos sin perder datos. **Al
 agregar un campo a una entidad: subir `version` y añadir bloque `if (version < N)`.**
+v11 añadió `game.usedFeatures: string[]` para logros de funciones sin datos propios.
 
 ---
 
@@ -186,8 +211,53 @@ agregar un campo a una entidad: subir `version` y añadir bloque `if (version < 
 - **Niveles**: `xpForLevel(n)=round(100*n^1.5)` acumulativo; `getLevelInfo(xp)` → {level,current,needed,progress,totalXp}.
 - **Rangos** (`rankName`): Novato→Aprendiz(3)→Aventurero(7)→Experto(12)→Veterano(20)→Maestro(30)→Leyenda(40).
 - **Racha** (`computeStreak`): días consecutivos con algún hábito; cuenta `h.log`.
-- **ACHIEVEMENTS**: ~25 logros con `check(state)` (hábitos, rachas, finanzas, deudas, metas, enfoque, tareas, intenciones, tropiezos, árbol de metas, presupuesto, tasa de ahorro, planificación, consumibles, metas financieras).
+- **ACHIEVEMENTS**: ~38 logros con `check(state)` (hábitos, rachas, finanzas, deudas, metas, enfoque, tareas, intenciones, tropiezos, árbol de metas, presupuesto, tasa de ahorro, planificación, consumibles, metas financieras, calendario/objetivos, congelar días, lista de compras, sub-hábitos, regla de 2 minutos, matriz de Eisenhower, tema/acento, sync en la nube, respaldo). Ver **regla de oro** en la sección 6.1: toda función nueva necesita su logro.
 - Subir de nivel y desbloquear logro disparan **confeti** (fx.ts) + toast.
+
+### 6.1 REGLA DE ORO: toda funcionalidad tiene su logro ⚠️
+
+**Esta es una convención obligatoria del proyecto, no opcional.** Cada vez que se
+agrega o modifica una funcionalidad (una acción del store, una pantalla nueva, una
+preferencia, una integración), **debe existir un logro en `ACHIEVEMENTS`** que la
+represente. El propósito es doble: gamificar cada rincón de la app y, sobre todo,
+que el usuario pueda ir a **Logros → Trofeos** y usarlo como un **mapa de
+funcionalidades**: ver qué existe, para qué sirve (por el `desc`) y si ya lo probó.
+
+Al implementar cualquier funcionalidad nueva, sigue este checklist:
+
+1. **Identifica el momento clave** de esa funcionalidad (crear el primer X, usarla N
+   veces, alcanzar un umbral, combinarla con otra cosa).
+2. **¿El dato ya vive en `AppState`?** (una entidad en `store/types.ts`, un array,
+   un contador). Si sí, escribe el `check(s) => ...` directamente sobre ese estado,
+   igual que los logros existentes (ej. `s.events.length >= 1`).
+3. **¿Es una función que NO deja rastro en `AppState`?** (cambiar de tema, activar
+   la sincronización en la nube, exportar un respaldo, alternar una preferencia de
+   `useUi`, etc.). Para estos casos usa el mecanismo de **flags de uso**:
+   - Llama a `useStore.getState().markFeatureUsed('mi-feature-id')` (o el hook
+     `markFeatureUsed` del store) en el punto donde el usuario usa la función.
+   - Esto agrega el string a `game.usedFeatures: string[]` y dispara
+     `checkAchievements()` automáticamente.
+   - En `ACHIEVEMENTS`, comprueba con
+     `check: (s) => (s.game.usedFeatures ?? []).includes('mi-feature-id')`.
+   - Ejemplos ya implementados: `'theme'` (ThemePicker), `'cloud-sync'`
+     (`startSync` en useSync.ts), `'backup-export'` (exportar en Logros.tsx),
+     `'restock'` (reabastecer un consumible).
+4. **Verifica que la acción del store llama a `checkAchievements()`** tras el
+   `set(...)`. Es un error común olvidarlo (varias acciones antiguas — `addLapse`,
+   `addSupply`, `addEvent`, `addCampaign`, `toggleFrozenDay`, `freezeRange`,
+   `addShoppingItem` — no lo llamaban y sus logros nunca se desbloqueaban; ya se
+   corrigió, pero revisa siempre las acciones nuevas).
+5. **Escribe `name`, `desc` e `icon` pensando en que el usuario aprenda algo**: el
+   `desc` debe explicar QUÉ hace la función, no solo "felicidades". Ejemplo bueno:
+   *"Congela un día (viaje/ausencia) para que no penalice tus métricas"* — el
+   usuario que nunca usó "congelar días" entiende de inmediato para qué sirve.
+6. **Actualiza este CONTEXT.md** (la lista de convenciones y, si aplica, la sección
+   de la página/feature) para que la próxima sesión sepa que el logro existe y por
+   qué.
+
+No hace falta pedir permiso para añadir el logro: es parte integral de construir
+la funcionalidad, igual que subir `version` del persist al cambiar el modelo de
+datos (sección 12).
 
 ---
 
@@ -208,13 +278,12 @@ agregar un campo a una entidad: subir `version` y añadir bloque `if (version < 
 
 - **Dashboard**: banner de "Intención de hoy" (link a Plan), stats (Balance/Ingresos/Gastos en `currencyShort`, Racha), fila "Hoy" (enfoque min, tareas done/total, rana del día), gráfico de balance acumulado 14d (área), dona de gastos por categoría, metas en progreso (barras), hábitos de hoy, aviso "por acabarse pronto", deuda total.
 - **Plan (Mi Día)**: toggle ☀️Hoy/🌙Mañana; intención; tareas del día (+ quick add, rana); ruleta de bloques de enfoque planeados; sub-metas diarias (commit/marcar); hábitos a comprometer (grid); ritual de cierre (+25XP + confeti). Todo enlaza al mismo estado.
-- **Calendario**: grid mensual lun-dom; cada celda = anillo de cumplimiento (dayCompliance), barras de campañas activas (color), chips de eventos; click abre detalle del día (cumplimiento, intención, campañas, tareas, agenda + agregar evento, congelar día). Toolbar: navegación de mes, "Hoy", "Evento", "❄️ Congelar" (rango), "Objetivo". Objetivos (campañas) con color/emoji/fechas + **enlazar hábitos y metas**; al tocar un objetivo → modal con **gráfico de área día a día** (campaignSeries), % promedio, "Día X de Y", enlazados, eliminar. Días congelados con **franja diagonal helada**.
-- **Enfoque**: temporizador circular (anillo) violeta(enfoque)/esmeralda(descanso); toggle de fase tipo "phase-toggle"; **WheelPicker** (ruleta timón) para Enfoque 20–90 min y Descanso 5–120 min (escala verde→rojo SOLO dentro de la ruleta); al terminar enfoque suena **jingle tipo Zelda** y **auto-inicia descanso**; al terminar el bloque pide resultado (Concentrado / Me distraje → crea Lapse); botón "Me distraje" a mitad; stats (enfoque hoy, calidad %, total h); gráfico 7 días; elegir tarea del día como foco. focusMin/breakMin se guardan en useUi.
+- **Calendario**: grid mensual lun-dom; cada celda = anillo de cumplimiento (dayCompliance), barras de campañas activas (color), chips de eventos; click abre detalle del día (cumplimiento, intención, campañas, tareas, agenda + agregar evento, congelar día, **tropiezos del día** con opción de registrar/borrar). Toolbar: navegación de mes, "Hoy", "Evento", "❄️ Congelar" (rango), "Objetivo". Objetivos (campañas) con color/emoji/fechas + **enlazar hábitos y metas**; al tocar un objetivo → modal con **gráfico de área día a día** (campaignSeries), % promedio, "Día X de Y", enlazados, eliminar. Días congelados con **franja diagonal helada**. Días con tropiezo se pintan **"rotos"/agrietados** (clase `.cal-cell.broken`: grietas SVG, glow rojo pulsante, shake al hover) — muy notorio a propósito, para desincentivar tropiezos con solo mirar el calendario.
+- **Enfoque**: temporizador circular (anillo) violeta(enfoque)/esmeralda(descanso); toggle de fase tipo "phase-toggle"; **WheelPicker** (ruleta timón) para Enfoque 20–90 min y Descanso 5–120 min (escala verde→rojo SOLO dentro de la ruleta); al terminar enfoque suena **jingle tipo Zelda** y **auto-inicia descanso**; al terminar el bloque pide resultado (Concentrado / Me distraje → crea Lapse); botón "Me distraje" a mitad; stats (enfoque hoy, calidad %, total h); gráfico 7 días; elegir tarea del día como foco; panel **"Tropiezos de hoy"** (lista en vivo mientras corre el timer, con botón para registrar uno vía `LapseModal`). focusMin/breakMin se guardan en useUi.
 - **Tareas**: matriz de Eisenhower (importante/urgente → "Hazlo ya / Planifícalo / Despáchalo / Opcional"), "Cómete la rana" 🐸 (1 por día, +30XP), regla de 2 minutos, estimación en pomodoros; secciones Hoy / Próximas / Completadas; barra de progreso del día.
-- **Hábitos**: crear con ícono/color/frecuencia/momento del día/**días aplicables (Lu-Do)**/**subhábitos**/cue/recompensa. Marcado **SOLO de hoy** (chips de subhábitos o botón "Marcar hoy"); tira semanal **solo lectura** (✓ completo, % parcial ámbar, ❄️ congelado, – no aplica). Gráfico lineal acumulado (toggle Semana/Mes) por fracción; "Cumplimiento por hábito" %; agrupación por momento del día si hay clasificados.
+- **Hábitos**: crear con ícono/color/frecuencia/momento del día/**días aplicables (Lu-Do)**/**subhábitos**/cue (ya sin campo de "recompensa inmediata", se quitó del formulario). Marcado **SOLO de hoy** (chips de subhábitos o botón "Marcar hoy"); tira semanal **solo lectura** (✓ completo, % parcial ámbar, ❄️ congelado, – no aplica). Gráfico lineal acumulado (toggle Semana/Mes) por fracción; "Cumplimiento por hábito" %; agrupación por momento del día si hay clasificados. Botón **"😵 Registrar tropiezo"** junto a "Nuevo hábito" (abre `LapseModal`, área por defecto `habito`).
 - **Metas**: árbol (meta padre → sub-metas, conector visual `.tree-*`); cadencia **única** (objetivo numérico + barra +/-), **diaria/semanal** (marcar periodo, mini-semana, pendientes acumuladas 🔴); **metas financieras** (`money`) en COP con aporte y "faltan $X"; progreso de padre derivado de hijos; stats arriba (activas, cumplidas, pendientes acumuladas).
 - **Finanzas** (mes seleccionable con ◀▶): stats (Balance/Ingresos/Gastos/Tasa de ahorro) en `currencyShort`; **Análisis** (promedio diario, mayor gasto, evaluación de ahorro); **Libro a 2 columnas**: Ingresos (verde, izquierda) | divisor | Gastos (rojo, derecha) con "+" para agregar en cada columna, **filtro por categoría**, totales vivos, borrar en hover; **Presupuestos** por categoría (barra verde/ámbar/rojo + excedente); gráfico Ingresos vs Gastos (últimos 6 meses); **Deudas** (abonar); **Cosas por acabarse** (consumibles con días restantes, "Compré" registra gasto); **Lista de compras** pendientes; movimientos del mes.
-- **Mejora**: registrar tropiezos (área, detonante, nota; hora automática). Insights: área más vulnerable, momento de riesgo, detonante #1; gráficos por momento del día / día de la semana / por área; historial.
 - **Estadísticas**: puntualidad de metas (antes/en tiempo/después + % puntual); días congelados (total/mes + advertencia si abusas); cumplimiento por hábito histórico (%, cumplidos/parciales/no cumplidos/total/congelados + racha).
 - **Logros & Progreso**: **Jefe Final** (barra de vida = logros desbloqueados/total, avatar evoluciona 🐉→👹→😈→🏆); stats (Nivel, XP, Logros, Racha); **Marcador Mes/Año** con anillos de Realización (verde) y Fallas (rojo) + desglose por categoría + tropiezos; **Trofeos** (grid de logros); **Datos y respaldo** (exportar/importar JSON, usa `importState`); **Reiniciar** todo.
 
@@ -245,7 +314,7 @@ Lista `THEMES` (en orden, el primero es default):
    bg `#08080a`, bg2 `#131315`, text `#eae7e8`, muted `#9c9398`, borderStrong rojo `rgba(245,41,31,.45)`,
    glows rojos. Ambiente extra en CSS: viñeta tipo túnel (`body::after`), brasa roja
    inferior, **textura de roca** (`body::before` con SVG feTurbulence, opacity .12),
-   halo rojo en `.brand-logo`.
+   halo rojo en `.brand-logo` (que ahora envuelve el `<img src="/haver.svg">`).
 2. cosmos 🌌 (violeta `#8b5cf6` + cian `#22d3ee`) — era el default anterior.
 3. sunset 🌅 (rosa/ámbar), 4. emerald 🌿 (verde/cian), 5. cyberpunk ⚡ (magenta/cian),
    6. gold 👑 (ámbar/naranja), 7. aurora ☀️ (modo **light**: define text/muted/panel/border claros).
@@ -305,15 +374,22 @@ persistente (`persistSession` + `autoRefreshToken`): se loguea una vez por dispo
 (guarda local y sube/baja de Supabase); repo en GitHub con commit en `main`;
 `netlify.toml` listo. La app **ya está desplegada** y accesible por URL pública.
 
-> Nota de proyecto: el repositorio y despliegue se llaman **Haver**. Internamente la
-> marca visible en la UI sigue siendo "Vida Quest" (logo ⚔️). Si en el futuro se
-> unifica el nombre, cambiar `brand-name` en Sidebar/Login y el `<title>` de index.html.
+> Nota de proyecto: el repositorio, despliegue y marca visible en la UI se llaman
+> **Haver** (unificado). Logo: monograma "H" blanco sobre gradiente rojo lava
+> (`--primary → --secondary` del tema Cueva) con un chevron superior que evoca
+> "subir de nivel", en `public/haver.svg`, usado como favicon y en `.brand-logo`
+> (Sidebar y Login). Las claves internas de `localStorage`
+> (`vida-quest-v1`, `vida-quest-ui`, `vida-quest-lastmod`) **se dejaron sin cambiar**
+> a propósito para no perder los datos ya guardados de los usuarios existentes.
 
 ---
 
 ## 12. Convenciones / cosas a recordar al continuar
 - Todo en **español**, moneda **COP**, fechas ISO `yyyy-mm-dd`, semana **Lunes=0..Domingo=6**.
+- **Toda funcionalidad nueva o existente debe tener un logro en `ACHIEVEMENTS`** (ver sección 6.1, regla de oro). No es opcional: es tan obligatorio como subir la versión del persist. Los Trofeos son el mapa de funcionalidades de la app.
+- Fechas: **nunca `Date.toISOString()`** para "hoy"/fechas del usuario (adelanta el día por la conversión a UTC). Usar siempre `todayISO()`/`toISO()` de `utils/date.ts`, que usan los componentes LOCALES del dispositivo.
 - Persistencia: al añadir campos a entidades, **subir version** en `useStore` persist y añadir migración; incluir el campo en `importState` y en el `exportData` de Logros.
+- Toda acción del store que agrega/cambia datos relevantes para un logro debe terminar llamando `checkAchievements()`. Para funciones sin datos propios (preferencias, integraciones), usar `markFeatureUsed('id')` en vez de inventar un campo nuevo en `AppState`.
 - Mantener **conexión entre componentes** (el plan, calendario, enfoque, hábitos y metas comparten el mismo estado; cambios se reflejan en todas partes). Es el foco del usuario.
 - `npm run build` debe pasar limpio (TS estricto). No dejar imports sin usar.
 - El bundle ya supera 500kB (warning de Vite), no es error. Posible mejora futura: code-splitting.
@@ -325,13 +401,14 @@ persistente (`persistSession` + `autoRefreshToken`): se loguea una vez por dispo
 - Objetivos del calendario con racha (días consecutivos al 100%) y mensajes motivadores.
 - Mini línea de tiempo de rangos congelados en Estadísticas.
 - Reflexión diaria (journaling) como cierre de día.
+- Categorizar/filtrar los Trofeos en Logros por área (hábitos, finanzas, calendario, sistema...) ahora que hay ~38, para que sigan siendo fáciles de escanear como mapa de funcionalidades.
 - Code-splitting para reducir el bundle.
 - (Opcional) Unificar el nombre de marca a "Haver" en la UI si se desea.
 
 ---
 
 ### Instrucción para el asistente en la nueva sesión
-Continúa el desarrollo de Vida Quest respetando este contexto: stack React+TS+Vite+Zustand,
+Continúa el desarrollo de Haver respetando este contexto: stack React+TS+Vite+Zustand,
 tema "Cueva" (negro/gris/rojo), español/COP, todo conectado, gamificado y basado en ciencia
 del comportamiento. Antes de editar, revisa los archivos relevantes; corre `npm run build`
 al terminar; sube `version` del persist al cambiar el modelo; y potencia las ideas del usuario

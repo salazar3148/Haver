@@ -215,6 +215,11 @@ h3 {
   place-items: center;
   font-size: 22px;
   box-shadow: var(--shadow-glow);
+  overflow: hidden;
+}
+.brand-logo img {
+  display: block;
+  border-radius: 8px;
 }
 .brand-name {
   font-family: 'Sora', sans-serif;

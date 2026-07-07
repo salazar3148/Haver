@@ -96,6 +96,11 @@ export interface GameState {
   xp: number
   achievements: string[] // ids de logros desbloqueados
   lastActiveDate: string
+  // Marcas de uso para funciones que viven fuera de AppState (tema, sync,
+  // respaldo, etc.) y que un logro necesita poder comprobar igual que
+  // cualquier otro dato. Ver CONTEXT.md § "Regla de oro: toda funcionalidad
+  // tiene un logro".
+  usedFeatures: string[]
 }
 
 // ===== Calendario =====

@@ -28,9 +28,11 @@ export function Login() {
       <div className="aurora"><div className="aurora-3" /></div>
       <div className="card" style={{ width: '100%', maxWidth: 400, padding: 30 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
-          <div className="brand-logo">⚔️</div>
+          <div className="brand-logo">
+            <img src="/haver.svg" alt="Haver" width={26} height={26} />
+          </div>
           <div>
-            <div className="brand-name" style={{ fontSize: 20 }}>Vida Quest</div>
+            <div className="brand-name" style={{ fontSize: 20 }}>Haver</div>
             <div className="brand-sub">Sube de nivel tu vida</div>
           </div>
         </div>

@@ -3,7 +3,8 @@ import type { Campaign, Habit } from './types'
 import { todayISO, startOfWeek, fromISO, toISO } from '../utils/date'
 import { dayFraction, isDayFull, habitAppliesOn } from './habits'
 
-const isoFromTs = (ts: number) => new Date(ts).toISOString().slice(0, 10)
+// Usa la fecha LOCAL (no UTC) para no adelantar el día antes de medianoche.
+const isoFromTs = (ts: number) => toISO(new Date(ts))
 
 // Cumplimiento de un día concreto (hábitos + metas diarias/semanales activas)
 export interface DayCompliance {

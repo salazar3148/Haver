@@ -1,4 +1,4 @@
-# Conectar Vida Quest a la nube (Supabase) y publicar en Netlify
+# Conectar Haver a la nube (Supabase) y publicar en Netlify
 
 La app ya trae todo el código de sincronización. Mientras no configures las
 claves, funciona 100% local (como hasta ahora). Sigue estos pasos para activar

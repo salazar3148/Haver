@@ -76,6 +76,9 @@ interface Store extends AppState {
   importState: (data: Partial<AppState>) => void
   resetAll: () => void
   _award: (xp: number) => void
+  // Marca el uso de una función que no vive en AppState (tema, sync, respaldo...)
+  // para que un logro pueda comprobarla. Ver gamification.ts / CONTEXT.md.
+  markFeatureUsed: (feature: string) => void
 }
 
 const initial: AppState = {
@@ -93,7 +96,7 @@ const initial: AppState = {
   events: [],
   campaigns: [],
   frozenDays: [],
-  game: { xp: 0, achievements: [], lastActiveDate: todayISO() },
+  game: { xp: 0, achievements: [], lastActiveDate: todayISO(), usedFeatures: [] },
 }
 
 const blankPlan = (date: string): import('./types').DayPlan => ({
@@ -129,6 +132,14 @@ export const useStore = create<Store>()(
       return {
         ...initial,
         _award: award,
+
+        markFeatureUsed: (feature) => {
+          if (get().game.usedFeatures.includes(feature)) return
+          set((st) => ({
+            game: { ...st.game, usedFeatures: [...st.game.usedFeatures, feature] },
+          }))
+          checkAchievements()
+        },
 
         addTransaction: (t) => {
           set((st) => ({
@@ -227,13 +238,15 @@ export const useStore = create<Store>()(
         },
         removeHabit: (id) =>
           set((st) => ({ habits: st.habits.filter((h) => h.id !== id) })),
-        toggleFrozenDay: (date) =>
+        toggleFrozenDay: (date) => {
           set((st) => ({
             frozenDays: st.frozenDays.includes(date)
               ? st.frozenDays.filter((d) => d !== date)
               : [...st.frozenDays, date],
-          })),
-        freezeRange: (start, end, freeze) =>
+          }))
+          checkAchievements()
+        },
+        freezeRange: (start, end, freeze) => {
           set((st) => {
             const set = new Set(st.frozenDays)
             let cur = start <= end ? start : end
@@ -245,7 +258,9 @@ export const useStore = create<Store>()(
               cur = addDays(cur, 1)
             }
             return { frozenDays: [...set] }
-          }),
+          })
+          checkAchievements()
+        },
 
         addGoal: (g) => {
           set((st) => ({
@@ -398,13 +413,15 @@ export const useStore = create<Store>()(
           checkAchievements()
         },
 
-        addSupply: (s) =>
+        addSupply: (s) => {
           set((st) => ({
             supplies: [
               { ...s, lastBought: s.lastBought ?? todayISO(), id: uid(), createdAt: Date.now() },
               ...st.supplies,
             ],
-          })),
+          }))
+          checkAchievements()
+        },
         restockSupply: (id) => {
           const sup = get().supplies.find((x) => x.id === id)
           set((st) => ({
@@ -412,6 +429,9 @@ export const useStore = create<Store>()(
               x.id === id ? { ...x, lastBought: todayISO() } : x
             ),
           }))
+          if (!get().game.usedFeatures.includes('restock')) {
+            set((st) => ({ game: { ...st.game, usedFeatures: [...st.game.usedFeatures, 'restock'] } }))
+          }
           // Si tiene precio, registra el gasto automáticamente
           if (sup && sup.price > 0) {
             set((st) => ({
@@ -434,13 +454,15 @@ export const useStore = create<Store>()(
         removeSupply: (id) =>
           set((st) => ({ supplies: st.supplies.filter((x) => x.id !== id) })),
 
-        addShoppingItem: (name) =>
+        addShoppingItem: (name) => {
           set((st) => ({
             shopping: [
               { id: uid(), name: name.trim(), bought: false, createdAt: Date.now() },
               ...st.shopping,
             ],
-          })),
+          }))
+          checkAchievements()
+        },
         toggleShoppingItem: (id) =>
           set((st) => ({
             shopping: st.shopping.map((x) =>
@@ -452,27 +474,33 @@ export const useStore = create<Store>()(
         clearBoughtShopping: () =>
           set((st) => ({ shopping: st.shopping.filter((x) => !x.bought) })),
 
-        addLapse: (l) =>
+        addLapse: (l) => {
           set((st) => ({
             lapses: [{ ...l, id: uid(), createdAt: Date.now() }, ...st.lapses],
-          })),
+          }))
+          checkAchievements()
+        },
         removeLapse: (id) =>
           set((st) => ({ lapses: st.lapses.filter((l) => l.id !== id) })),
 
-        addEvent: (e) =>
+        addEvent: (e) => {
           set((st) => ({
             events: [{ ...e, done: false, id: uid(), createdAt: Date.now() }, ...st.events],
-          })),
+          }))
+          checkAchievements()
+        },
         toggleEvent: (id) =>
           set((st) => ({
             events: st.events.map((e) => (e.id === id ? { ...e, done: !e.done } : e)),
           })),
         removeEvent: (id) =>
           set((st) => ({ events: st.events.filter((e) => e.id !== id) })),
-        addCampaign: (c) =>
+        addCampaign: (c) => {
           set((st) => ({
             campaigns: [{ ...c, id: uid(), createdAt: Date.now() }, ...st.campaigns],
-          })),
+          }))
+          checkAchievements()
+        },
         removeCampaign: (id) =>
           set((st) => ({ campaigns: st.campaigns.filter((c) => c.id !== id) })),
 
@@ -492,7 +520,9 @@ export const useStore = create<Store>()(
             events: data.events ?? [],
             campaigns: data.campaigns ?? [],
             frozenDays: data.frozenDays ?? [],
-            game: data.game ?? { xp: 0, achievements: [], lastActiveDate: todayISO() },
+            game: data.game
+              ? { ...data.game, usedFeatures: data.game.usedFeatures ?? [] }
+              : { xp: 0, achievements: [], lastActiveDate: todayISO(), usedFeatures: [] },
           })),
 
         resetAll: () => set({ ...initial }),
@@ -500,7 +530,7 @@ export const useStore = create<Store>()(
     },
     {
       name: 'vida-quest-v1',
-      version: 10,
+      version: 11,
       migrate: (persisted: any, version: number) => {
         if (!persisted) return persisted
         const s = persisted
@@ -555,6 +585,9 @@ export const useStore = create<Store>()(
         if (version < 10) {
           s.frozenDays = s.frozenDays ?? []
           s.habits = (s.habits ?? []).map((h: any) => ({ days: h.days ?? [], ...h }))
+        }
+        if (version < 11) {
+          s.game = { usedFeatures: [], ...(s.game ?? {}) }
         }
         return s
       },

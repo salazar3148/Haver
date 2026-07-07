@@ -1,5 +1,5 @@
 import type { AppState } from './types'
-import { todayISO } from '../utils/date'
+import { todayISO, toISO } from '../utils/date'
 
 // ===== Niveles =====
 // XP necesaria acumulada para alcanzar el nivel n sigue una curva creciente.
@@ -56,7 +56,7 @@ export const computeStreak = (habits: AppState['habits']): number => {
   const cursor = new Date()
   // Si hoy no hay nada, la racha puede seguir viva si ayer sí; empezamos desde hoy.
   for (;;) {
-    const iso = cursor.toISOString().slice(0, 10)
+    const iso = toISO(cursor)
     if (done.has(iso)) {
       streak++
       cursor.setDate(cursor.getDate() - 1)
@@ -289,6 +289,104 @@ export const ACHIEVEMENTS: Achievement[] = [
     desc: 'Completa una meta financiera',
     icon: '🛒',
     check: (s) => s.goals.some((g) => g.money && g.current >= g.target && g.target > 0),
+  },
+
+  // ── A partir de aquí: un logro por cada funcionalidad del calendario,
+  // hábitos avanzados, tareas avanzadas, consumibles y preferencias/nube.
+  // Regla del proyecto: toda función nueva DEBE tener su logro (ver CONTEXT.md).
+  {
+    id: 'debt-tracker',
+    name: 'Bajo control',
+    desc: 'Registra tu primera deuda para hacerle seguimiento',
+    icon: '📋',
+    check: (s) => s.debts.length >= 1,
+  },
+  {
+    id: 'calendar-event',
+    name: 'Agenda maestra',
+    desc: 'Agrega tu primer evento al calendario',
+    icon: '📅',
+    check: (s) => s.events.length >= 1,
+  },
+  {
+    id: 'campaign-starter',
+    name: 'Trazador de objetivos',
+    desc: 'Crea tu primer objetivo (reto de varios días) en el calendario',
+    icon: '🚀',
+    check: (s) => s.campaigns.length >= 1,
+  },
+  {
+    id: 'frozen-first',
+    name: 'Modo hielo',
+    desc: 'Congela un día (viaje/ausencia) para que no penalice tus métricas',
+    icon: '❄️',
+    check: (s) => (s.frozenDays ?? []).length >= 1,
+  },
+  {
+    id: 'shopping-list',
+    name: 'Lista lista',
+    desc: 'Agrega algo a tu lista de compras',
+    icon: '🛍️',
+    check: (s) => (s.shopping ?? []).length >= 1,
+  },
+  {
+    id: 'restock-hero',
+    name: 'Reabastecido',
+    desc: 'Marca un consumible como recién comprado',
+    icon: '🔁',
+    check: (s) => (s.game.usedFeatures ?? []).includes('restock'),
+  },
+  {
+    id: 'sub-habit-builder',
+    name: 'Hábito compuesto',
+    desc: 'Crea un hábito con 2 o más sub-hábitos (ej. mañana/tarde/noche)',
+    icon: '🧩',
+    check: (s) => s.habits.some((h) => (h.subs?.length ?? 0) >= 2),
+  },
+  {
+    id: 'two-minute-rule',
+    name: 'Menos de 2 minutos',
+    desc: 'Completa una tarea marcada con la regla de los 2 minutos',
+    icon: '⏱️',
+    check: (s) => s.tasks.some((t) => t.quickWin && t.done),
+  },
+  {
+    id: 'eisenhower-master',
+    name: 'Maestro de Eisenhower',
+    desc: 'Ten al menos una tarea en cada cuadrante de la matriz importante/urgente',
+    icon: '🧮',
+    check: (s) => {
+      const quads = [
+        [true, true],
+        [true, false],
+        [false, true],
+        [false, false],
+      ]
+      return quads.every(([imp, urg]) =>
+        s.tasks.some((t) => t.important === imp && t.urgent === urg)
+      )
+    },
+  },
+  {
+    id: 'theme-explorer',
+    name: 'Estilo propio',
+    desc: 'Personaliza el tema o el color de acento de la app',
+    icon: '🎨',
+    check: (s) => (s.game.usedFeatures ?? []).includes('theme'),
+  },
+  {
+    id: 'cloud-sync',
+    name: 'En la nube',
+    desc: 'Conecta tu cuenta y sincroniza tus datos entre dispositivos',
+    icon: '☁️',
+    check: (s) => (s.game.usedFeatures ?? []).includes('cloud-sync'),
+  },
+  {
+    id: 'backup-master',
+    name: 'Copia de seguridad',
+    desc: 'Exporta un respaldo de tus datos',
+    icon: '💾',
+    check: (s) => (s.game.usedFeatures ?? []).includes('backup-export'),
   },
 ]
 

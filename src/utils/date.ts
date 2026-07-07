@@ -1,6 +1,15 @@
-export const todayISO = () => new Date().toISOString().slice(0, 10)
+// IMPORTANTE: nunca usar Date.toISOString() para obtener "la fecha de hoy":
+// eso convierte a UTC y adelanta el día varias horas antes de medianoche en
+// Colombia (UTC-5). Siempre se construye la fecha ISO con los componentes
+// LOCALES del dispositivo (año/mes/día), que es lo que el usuario ve en su reloj.
+export const toISO = (d: Date) => {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
 
-export const toISO = (d: Date) => d.toISOString().slice(0, 10)
+export const todayISO = () => toISO(new Date())
 
 export const fromISO = (s: string) => {
   const [y, m, d] = s.split('-').map(Number)
