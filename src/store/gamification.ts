@@ -416,6 +416,43 @@ export const ACHIEVEMENTS: Achievement[] = [
     icon: '⭐',
     check: (s) => (s.quotes ?? []).some((q) => q.favorite),
   },
+
+  // ── Tablero (corcho): notas, pendientes y polaroids fijados con chinchetas.
+  {
+    id: 'board-first',
+    name: 'Primera chincheta',
+    desc: 'Fija tu primera nota en el Tablero (tu corcho personal)',
+    icon: '📌',
+    check: (s) => (s.boardNotes ?? []).length >= 1,
+  },
+  {
+    id: 'board-todo',
+    name: 'Lista al muro',
+    desc: 'Crea una nota de pendientes (checklist) en el Tablero',
+    icon: '🧷',
+    check: (s) => (s.boardNotes ?? []).some((n) => n.kind === 'todo'),
+  },
+  {
+    id: 'board-todo-done',
+    name: 'Tachado del muro',
+    desc: 'Completa un pendiente de una nota del Tablero',
+    icon: '✔️',
+    check: (s) => (s.boardNotes ?? []).some((n) => n.items.some((it) => it.done)),
+  },
+  {
+    id: 'board-photo',
+    name: 'Recuerdo fijado',
+    desc: 'Cuelga una nota tipo foto (polaroid) en el Tablero',
+    icon: '📸',
+    check: (s) => (s.boardNotes ?? []).some((n) => n.kind === 'photo'),
+  },
+  {
+    id: 'board-full',
+    name: 'Corcho vivo',
+    desc: 'Ten 10 notas fijadas en el Tablero a la vez',
+    icon: '🗂️',
+    check: (s) => (s.boardNotes ?? []).length >= 10,
+  },
 ]
 
 /** Devuelve los ids de logros recién desbloqueados que no estaban antes. */

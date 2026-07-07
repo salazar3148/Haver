@@ -13,6 +13,7 @@ import {
   BarChart3,
   Link2,
   Quote,
+  Pin,
 } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { getLevelInfo, rankName } from '../store/gamification'
@@ -31,6 +32,7 @@ const items = [
   { to: '/estadisticas', label: 'Estadísticas', icon: BarChart3 },
   { to: '/recursos', label: 'Recursos', icon: Link2 },
   { to: '/citas', label: 'Citas', icon: Quote },
+  { to: '/tablero', label: 'Tablero', icon: Pin },
   { to: '/logros', label: 'Logros', icon: Trophy },
 ]
 

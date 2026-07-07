@@ -25,6 +25,7 @@ import { Calendario } from './pages/Calendario'
 import { Estadisticas } from './pages/Estadisticas'
 import { Recursos } from './pages/Recursos'
 import { Citas } from './pages/Citas'
+import { Tablero } from './pages/Tablero'
 
 function XpWidget() {
   const xp = useStore((s) => s.game.xp)
@@ -137,6 +138,7 @@ function Shell({ picker, setPicker, effects }: { picker: boolean; setPicker: (v:
             <Route path="/estadisticas" element={<Estadisticas />} />
             <Route path="/recursos" element={<Recursos />} />
             <Route path="/citas" element={<Citas />} />
+            <Route path="/tablero" element={<Tablero />} />
             <Route path="/logros" element={<Logros />} />
           </Routes>
         </div>

@@ -111,6 +111,33 @@ export interface Quote {
   createdAt: number
 }
 
+// ===== Tablero (corcho) =====
+// Tipos de nota que se pueden fijar en el tablero, imitando un corcho real.
+export type NoteKind = 'sticky' | 'paper' | 'todo' | 'photo'
+
+export interface ChecklistItem {
+  id: string
+  text: string
+  done: boolean
+}
+
+// Una nota fijada en el tablero. Posición libre (x,y en px dentro del corcho),
+// rotación ligera y orden de apilamiento (z) para simular papeles reales.
+export interface BoardNote {
+  id: string
+  kind: NoteKind
+  text: string // contenido (sticky/paper), pie de foto (photo) o título (todo)
+  emoji: string // "foto" del polaroid o acento decorativo
+  color: string // color del papel (hex)
+  pin: string // color de la chincheta (hex)
+  items: ChecklistItem[] // ítems (solo para kind 'todo')
+  x: number
+  y: number
+  rot: number // rotación en grados
+  z: number // orden de apilamiento
+  createdAt: number
+}
+
 export interface GameState {
   xp: number
   achievements: string[] // ids de logros desbloqueados
@@ -225,5 +252,6 @@ export interface AppState {
   frozenDays: string[] // días congelados (viaje/ausencia): no penalizan
   resources: Resource[] // páginas web que aportan valor (recursos guardados)
   quotes: Quote[] // citas célebres guardadas para inspirarse
+  boardNotes: BoardNote[] // notas fijadas en el Tablero (corcho)
   game: GameState
 }

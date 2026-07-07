@@ -88,6 +88,7 @@ src/
     Estadisticas.tsx      # puntualidad de metas, congelados, cumplimiento por hábito
     Recursos.tsx          # páginas web que aportan valor: título, URL, descripción y categoría
     Citas.tsx             # citas célebres guardadas para inspirarse: frase, autor, categoría, favoritas
+    Tablero.tsx           # "Tablero": corcho realista con notas adhesivas/papel/pendientes/foto, arrastrables (drag libre)
     Logros.tsx            # "Jefe Final" (barra de logros) + marcador mes/año + trofeos (= mapa de funcionalidades) + reset
   utils/
     date.ts               # utilidades de fecha (ISO LOCAL del dispositivo — nunca UTC, ver nota abajo)
@@ -134,6 +135,7 @@ AppState = {
   frozenDays: string[]          // días congelados (viaje/ausencia) — no penalizan
   resources: Resource[]         // páginas web que aportan valor (recursos guardados)
   quotes: Quote[]                // citas célebres guardadas para inspirarse
+  boardNotes: BoardNote[]        // notas fijadas en el Tablero (corcho), posición libre
   game: GameState               // {xp, achievements:string[], lastActiveDate, usedFeatures:string[]}
 }
 ```
@@ -181,6 +183,17 @@ CalendarEvent = { id,title,date,time('HH:MM'|''),type:'reunion'|'cita'|'tarea'|'
 Campaign = { id,title,emoji,color,startDate,endDate,habitIds[],goalIds[],createdAt }
 Resource = { id,title,url,description,category(string libre),createdAt } // "Recursos": páginas web de valor
 Quote = { id,text,author(opcional, puede ir vacío),favorite:boolean,createdAt } // "Citas": frases para inspirarse
+
+NoteKind = 'sticky'|'paper'|'todo'|'photo'
+BoardNote = {                    // "Tablero": una nota fijada en el corcho
+  id, kind:NoteKind,
+  text,                          // contenido (sticky/paper), pie (photo) o título (todo)
+  emoji,                         // "foto" del polaroid (photo) o acento
+  color(hex del papel), pin(hex de la chincheta),
+  items:{id,text,done}[],        // ítems del checklist (solo kind 'todo')
+  x, y,                          // posición LIBRE en px dentro del corcho (drag)
+  rot(grados, leve), z(orden de apilamiento), createdAt
+}
 ```
 
 ---
@@ -200,6 +213,7 @@ tropiezos: `addLapse, removeLapse`;
 calendario: `addEvent, toggleEvent, removeEvent, addCampaign, removeCampaign`;
 recursos: `addResource, removeResource`;
 citas: `addQuote, toggleQuoteFavorite, removeQuote`;
+tablero: `addNote(kind,x,y), updateNote(id,patch), moveNote(id,x,y), bringNoteToFront(id), removeNote(id), addNoteItem(id,text), toggleNoteItem(id,itemId), removeNoteItem(id,itemId)` (drag/edición gestionados en Tablero.tsx; moveNote solo se llama al soltar para no spamear el estado);
 sistema: `importState(Partial<AppState>) (reemplaza todo), resetAll, _award(xp), markFeatureUsed(feature) (marca game.usedFeatures para logros de funciones sin datos propios; ver §6.1)`.
 
 `checkAchievements()` se llama tras cambios relevantes; desbloquea logros (ya **no** dan XP).
@@ -214,6 +228,7 @@ v12 añadió `resources: Resource[]` (páginas web de valor, sección Recursos).
 v13 añadió `quotes: Quote[]` (citas célebres, sección Citas).
 v14 quitó el campo `tag` de `Quote` (categorías descartadas por el usuario;
 la migración limpia el campo de las citas ya guardadas).
+v15 añadió `boardNotes: BoardNote[]` (módulo "Tablero"/corcho).
 
 ---
 
@@ -223,7 +238,10 @@ la migración limpia el campo de las citas ya guardadas).
 - **Niveles**: `xpForLevel(n)=round(100*n^1.5)` acumulativo; `getLevelInfo(xp)` → {level,current,needed,progress,totalXp}.
 - **Rangos** (`rankName`): Novato→Aprendiz(3)→Aventurero(7)→Experto(12)→Veterano(20)→Maestro(30)→Leyenda(40).
 - **Racha** (`computeStreak`): días consecutivos con algún hábito; cuenta `h.log`.
-- **ACHIEVEMENTS**: 42 logros con `check(state)` (hábitos, rachas, finanzas, deudas, metas, enfoque, tareas, intenciones, tropiezos, árbol de metas, presupuesto, tasa de ahorro, planificación, consumibles, metas financieras, calendario/objetivos, congelar días, lista de compras, sub-hábitos, regla de 2 minutos, matriz de Eisenhower, tema/acento, sync en la nube, recursos web, citas). Ver **regla de oro** en la sección 6.1: toda función nueva necesita su logro.
+- **ACHIEVEMENTS**: 47 logros con `check(state)` (hábitos, rachas, finanzas, deudas, metas, enfoque, tareas, intenciones, tropiezos, árbol de metas, presupuesto, tasa de ahorro, planificación, consumibles, metas financieras, calendario/objetivos, congelar días, lista de compras, sub-hábitos, regla de 2 minutos, matriz de Eisenhower, tema/acento, sync en la nube, recursos web, citas, **tablero/corcho**). Los 5 del Tablero:
+`board-first` (fija tu primera nota 📌), `board-todo` (nota de pendientes 🧷),
+`board-todo-done` (completa un pendiente del tablero ✔️), `board-photo` (nota tipo foto/polaroid 📸),
+`board-full` (10 notas fijadas a la vez 🗂️). Ver **regla de oro** en la sección 6.1: toda función nueva necesita su logro.
 - Subir de nivel y desbloquear logro disparan **confeti** (fx.ts) + toast.
 
 ### 6.1 REGLA DE ORO: toda funcionalidad tiene su logro ⚠️
@@ -315,6 +333,19 @@ datos (sección 12).
 - **Estadísticas**: puntualidad de metas (antes/en tiempo/después + % puntual); días congelados (total/mes + advertencia si abusas); cumplimiento por hábito histórico (%, cumplidos/parciales/no cumplidos/total/congelados + racha).
 - **Recursos**: guarda páginas web que aportan valor (`Resource`: title, url, description, category libre). Tarjetas agrupadas por categoría (colores fijos para Productividad/Finanzas/Salud/Estudio/General, gris para categorías nuevas), muestra el hostname y botón "Visitar" (`target="_blank" rel="noopener noreferrer"`). El campo URL acepta sin `https://` (se normaliza al guardar). Es, en esencia, una libreta de marcadores curados con explicación de "para qué sirve" cada uno.
 - **Citas**: guarda citas célebres para inspirarse (`Quote`: text, author OPCIONAL, favorite). Sin categorías y sin banco de sugeridas (se quitaron a propósito: el usuario solo quiere las frases que a él le marcan, escritas por él mismo). "Cita del día" destacada arriba (aleatoria estable por día: prioriza favoritas si hay alguna, usa `Date.now()/86400000 % pool.length` para que no cambie durante el día). Si no hay autor, la tarjeta muestra "Autor desconocido" en vez de dejarlo vacío. Filtro Todas/⭐Favoritas.
+- **Tablero** (corcho): imita un tablero de corcho REAL. Marco de madera + superficie de
+  corcho (texturas 100% CSS: radial-gradients de motas + grano SVG feTurbulence). Se fijan
+  4 tipos de nota (`BoardNote`): **sticky** (post-it con esquina doblada, sin chincheta),
+  **paper** (papel de cuaderno con líneas y margen rojo, chincheta), **todo** (lista de
+  pendientes con checklist: agregar/tachar/borrar ítems) y **photo** (polaroid: "imagen" =
+  emoji que se cambia con doble clic sobre la foto, + pie de foto). Cada nota tiene color de
+  papel y color de chincheta aleatorios (editables: paleta al pasar el cursor), rotación leve
+  aleatoria y **posición libre**: se **arrastran** por todo el corcho (pointer events, se
+  clampa a los bordes; `moveNote` solo al soltar; `bringNoteToFront` al tomarla para el
+  z-index). Doble clic en una nota → editar texto inline (fuente manuscrita **Caveat**, añadida
+  en index.html). Barra superior para crear cada tipo. La barra de acciones por nota (editar/
+  color/borrar) aparece en hover. Estado en `boardNotes` (persist v15). CSS: sección "TABLERO
+  (corcho)" al final de index.css; respeta `[data-reduce]`.
 - **Logros & Progreso**: **Jefe Final** (barra de vida = logros desbloqueados/total, avatar evoluciona 🐉→👹→😈→🏆); stats (Nivel, XP, Logros, Racha); **Marcador Mes/Año** con anillos de Realización (verde) y Fallas (rojo) + desglose por categoría + tropiezos; **Trofeos** (grid de logros); **Reiniciar** todo.
   - Ya **no** existe exportar/importar respaldo manual (JSON) ni el logro
     "backup-master": todo se guarda automáticamente en Supabase (sección 11), así

@@ -14,6 +14,8 @@ import type {
   Campaign,
   Resource,
   Quote,
+  BoardNote,
+  NoteKind,
 } from './types'
 import { uid } from '../utils/format'
 import { todayISO, startOfWeek, addDays } from '../utils/date'
@@ -81,6 +83,15 @@ interface Store extends AppState {
   addQuote: (q: Omit<Quote, 'id' | 'createdAt' | 'favorite'>) => void
   toggleQuoteFavorite: (id: string) => void
   removeQuote: (id: string) => void
+  // tablero (corcho)
+  addNote: (kind: NoteKind, x: number, y: number) => void
+  updateNote: (id: string, patch: Partial<Omit<BoardNote, 'id' | 'createdAt'>>) => void
+  moveNote: (id: string, x: number, y: number) => void
+  bringNoteToFront: (id: string) => void
+  removeNote: (id: string) => void
+  addNoteItem: (id: string, text: string) => void
+  toggleNoteItem: (id: string, itemId: string) => void
+  removeNoteItem: (id: string, itemId: string) => void
   // sistema
   importState: (data: Partial<AppState>) => void
   resetAll: () => void
@@ -107,8 +118,15 @@ const initial: AppState = {
   frozenDays: [],
   resources: [],
   quotes: [],
+  boardNotes: [],
   game: { xp: 0, achievements: [], lastActiveDate: todayISO(), usedFeatures: [] },
 }
+
+// Paleta de colores de papel para el tablero (tonos "post-it" reales)
+const NOTE_COLORS = ['#ffe082', '#ff9db0', '#8fd0ff', '#a8e6a1', '#ffb877', '#d3b4ff']
+// Colores de chincheta
+const PIN_COLORS = ['#e5484d', '#f5a524', '#3b82f6', '#22c55e', '#a855f7', '#ec4899']
+const pick = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)]
 
 const blankPlan = (date: string): import('./types').DayPlan => ({
   date,
@@ -537,6 +555,79 @@ export const useStore = create<Store>()(
         removeQuote: (id) =>
           set((st) => ({ quotes: st.quotes.filter((q) => q.id !== id) })),
 
+        addNote: (kind, x, y) => {
+          const maxZ = get().boardNotes.reduce((m, n) => Math.max(m, n.z), 0)
+          const note: BoardNote = {
+            id: uid(),
+            kind,
+            text: '',
+            emoji: kind === 'photo' ? '📸' : '',
+            color: kind === 'photo' ? '#ffffff' : pick(NOTE_COLORS),
+            pin: pick(PIN_COLORS),
+            items: kind === 'todo' ? [] : [],
+            x,
+            y,
+            rot: Math.round((Math.random() - 0.5) * 8), // -4..+4 grados
+            z: maxZ + 1,
+            createdAt: Date.now(),
+          }
+          set((st) => ({ boardNotes: [...st.boardNotes, note] }))
+          checkAchievements()
+        },
+        updateNote: (id, patch) =>
+          set((st) => ({
+            boardNotes: st.boardNotes.map((n) => (n.id === id ? { ...n, ...patch } : n)),
+          })),
+        moveNote: (id, x, y) =>
+          set((st) => ({
+            boardNotes: st.boardNotes.map((n) => (n.id === id ? { ...n, x, y } : n)),
+          })),
+        bringNoteToFront: (id) =>
+          set((st) => {
+            const maxZ = st.boardNotes.reduce((m, n) => Math.max(m, n.z), 0)
+            const cur = st.boardNotes.find((n) => n.id === id)
+            if (!cur || cur.z === maxZ) return {}
+            return {
+              boardNotes: st.boardNotes.map((n) =>
+                n.id === id ? { ...n, z: maxZ + 1 } : n
+              ),
+            }
+          }),
+        removeNote: (id) =>
+          set((st) => ({ boardNotes: st.boardNotes.filter((n) => n.id !== id) })),
+        addNoteItem: (id, text) => {
+          if (!text.trim()) return
+          set((st) => ({
+            boardNotes: st.boardNotes.map((n) =>
+              n.id === id
+                ? { ...n, items: [...n.items, { id: uid(), text: text.trim(), done: false }] }
+                : n
+            ),
+          }))
+          checkAchievements()
+        },
+        toggleNoteItem: (id, itemId) => {
+          set((st) => ({
+            boardNotes: st.boardNotes.map((n) =>
+              n.id === id
+                ? {
+                    ...n,
+                    items: n.items.map((it) =>
+                      it.id === itemId ? { ...it, done: !it.done } : it
+                    ),
+                  }
+                : n
+            ),
+          }))
+          checkAchievements()
+        },
+        removeNoteItem: (id, itemId) =>
+          set((st) => ({
+            boardNotes: st.boardNotes.map((n) =>
+              n.id === id ? { ...n, items: n.items.filter((it) => it.id !== itemId) } : n
+            ),
+          })),
+
         importState: (data) =>
           set(() => ({
             transactions: data.transactions ?? [],
@@ -555,6 +646,7 @@ export const useStore = create<Store>()(
             frozenDays: data.frozenDays ?? [],
             resources: data.resources ?? [],
             quotes: data.quotes ?? [],
+            boardNotes: data.boardNotes ?? [],
             game: data.game
               ? { ...data.game, usedFeatures: data.game.usedFeatures ?? [] }
               : { xp: 0, achievements: [], lastActiveDate: todayISO(), usedFeatures: [] },
@@ -565,7 +657,7 @@ export const useStore = create<Store>()(
     },
     {
       name: 'vida-quest-v1',
-      version: 14,
+      version: 15,
       migrate: (persisted: any, version: number) => {
         if (!persisted) return persisted
         const s = persisted
@@ -636,6 +728,10 @@ export const useStore = create<Store>()(
             const { tag, ...rest } = q
             return rest
           })
+        }
+        if (version < 15) {
+          // Nuevo módulo "Tablero" (corcho): notas fijadas con posición libre.
+          s.boardNotes = s.boardNotes ?? []
         }
         return s
       },
