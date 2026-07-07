@@ -335,12 +335,15 @@ function NoteCard({
   const ref = useRef<HTMLDivElement>(null)
   const [dragging, setDragging] = useState(false)
   const [editing, setEditing] = useState(!!autoEdit)
+  const [editingTitle, setEditingTitle] = useState(false)
   const [showColors, setShowColors] = useState(false)
   const [showEmojis, setShowEmojis] = useState(false)
   const [draft, setDraft] = useState(note.text)
+  const [titleDraft, setTitleDraft] = useState(note.title ?? '')
   const [newItem, setNewItem] = useState('')
 
   useEffect(() => setDraft(note.text), [note.text])
+  useEffect(() => setTitleDraft(note.title ?? ''), [note.title])
 
   const startDrag = (e: React.PointerEvent) => {
     // Evita que el gesto llegue al lienzo (paneo). Los controles internos no arrastran.
@@ -352,7 +355,7 @@ function NoteCard({
     )
       return
     e.preventDefault()
-    if (note.kind !== 'frame') onFront(note.id) // el cuadro se queda detrás
+    onFront(note.id)
     onSelect(note.id)
     const downTarget = e.target as HTMLElement
     const el = ref.current
@@ -401,7 +404,12 @@ function NoteCard({
       if (target.closest('.photo-pic')) setShowEmojis(true)
       else setEditing(true)
     } else if (note.kind === 'frame') {
-      if (note.showLabel !== false) setEditing(true) // solo edita si la etiqueta está activa
+      // Clic en la cabecera → edita el título; clic en el cuerpo → edita el texto
+      if (target.closest('.frame-bar')) {
+        if (note.showLabel !== false) setEditingTitle(true)
+      } else {
+        setEditing(true)
+      }
     } else if (note.kind !== 'todo') {
       setEditing(true)
     }
@@ -445,6 +453,11 @@ function NoteCard({
   const commitText = () => {
     setEditing(false)
     if (draft !== note.text) onUpdate(note.id, { text: draft })
+  }
+
+  const commitTitle = () => {
+    setEditingTitle(false)
+    if (titleDraft !== (note.title ?? '')) onUpdate(note.id, { title: titleDraft })
   }
 
   // Escape sale de la edición (sin borrar), dejando el elemento seleccionado
@@ -498,7 +511,7 @@ function NoteCard({
             onClick={() => {
               const turningOn = note.showLabel === false
               onUpdate(note.id, { showLabel: turningOn })
-              if (turningOn) setEditing(true)
+              if (turningOn) setEditingTitle(true)
             }}
           >
             <Tag size={13} />
@@ -597,42 +610,50 @@ function NoteCard({
         )
 
       case 'frame': {
-        // La etiqueta es opcional: si está desactivada, el cuadro va solo.
-        if (note.showLabel === false) return null
-        if (editing) {
-          return (
-            <div className="frame-bar">
-              <input
-                className="note-input frame-label"
+        // Cabecera de título (opcional): se muestra si está activa y hay título,
+        // se está editando, o el cuadro está seleccionado.
+        const showTitle = note.showLabel !== false && (editingTitle || !!note.title || selected)
+        return (
+          <>
+            {showTitle && (
+              <div className="frame-bar" title="Clic para el título">
+                {editingTitle ? (
+                  <input
+                    className="frame-label"
+                    autoFocus
+                    value={titleDraft}
+                    placeholder="Título…"
+                    onChange={(e) => setTitleDraft(e.target.value)}
+                    onBlur={commitTitle}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') commitTitle()
+                      else onEditKeyDown(e)
+                    }}
+                  />
+                ) : note.title ? (
+                  <span className="frame-label-view">{note.title}</span>
+                ) : (
+                  <span className="frame-label-view ph">Título…</span>
+                )}
+              </div>
+            )}
+            {editing ? (
+              <textarea
+                className="frame-text-input"
                 autoFocus
                 value={draft}
-                placeholder="Etiqueta…"
+                placeholder="Escribe aquí…"
                 onChange={(e) => setDraft(e.target.value)}
                 onBlur={commitText}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') commitText()
-                  else onEditKeyDown(e)
-                }}
+                onKeyDown={onEditKeyDown}
               />
-            </div>
-          )
-        }
-        if (note.text) {
-          return (
-            <div className="frame-bar" title="Clic para renombrar">
-              <span className="frame-label-view">{note.text}</span>
-            </div>
-          )
-        }
-        // Etiqueta activa pero vacía: solo se insinúa cuando el cuadro está seleccionado
-        if (selected) {
-          return (
-            <div className="frame-bar" title="Clic para nombrar">
-              <span className="frame-label-view ph">Etiqueta…</span>
-            </div>
-          )
-        }
-        return null
+            ) : (
+              <div className="frame-text">
+                {note.text || <span className="ph">Clic para escribir…</span>}
+              </div>
+            )}
+          </>
+        )
       }
 
       case 'photo':

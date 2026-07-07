@@ -354,12 +354,12 @@ datos (sección 12).
     removeNoteItem`; la fila "Agregar ítem" solo aparece cuando la nota está **seleccionada**, si
     no muestra una pista `.chk-hint`), **photo** (polaroid: "imagen" = emoji elegido de un picker + pie), **text**
     (solo texto sobre el lienzo, sin tarjeta; color/tamaño legible según día/noche), **frame**
-    (**cuadro redimensionable** a lo ancho y alto para agrupar/decorar: se crea con **z bajo**
-    (`minZ-1`) para quedar DETRÁS de las notas sin taparlas y **no salta al frente** al arrastrarlo;
-    se mueve desde cualquier parte y se redimensiona con el asa `.resize-handle`. La **etiqueta es
-    opcional** (`BoardNote.showLabel`, undefined=true): un botón 🏷️ (Tag) en la barra de acciones
-    la activa/desactiva; si está activa y vacía solo se insinúa al seleccionar el cuadro, si está
-    desactivada el cuadro va solo sin barra) y **sticker**
+    (**cuadro de texto redimensionable** a lo ancho y alto: se escribe texto en el CUERPO
+    (`BoardNote.text`, `.frame-text`/`.frame-text-input` con scroll interno) con un **título
+    opcional** en la cabecera (`BoardNote.title`; `BoardNote.showLabel` undefined=true la activa,
+    botón 🏷️ Tag en la barra de acciones la activa/desactiva). Clic en la cabecera edita el título,
+    clic en el cuerpo edita el texto; se mueve desde cualquier parte y se redimensiona con el asa
+    `.resize-handle`) y **sticker**
     (emoji decorativo escalable con el asa; emoji elegido de un picker `.note-emojis`).
   - `BoardNote.w/h` (opcionales) guardan el tamaño del cuadro (w+h) o el tamaño de fuente del
     sticker (w). El **asa de redimensionado** aparece en cuadro y sticker (`canResize`). Crear
