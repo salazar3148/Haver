@@ -23,20 +23,40 @@ import { getLevelInfo, rankName } from '../store/gamification'
 import { Bar } from './ui'
 import { SyncBadge } from './SyncBadge'
 
-const items = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { to: '/plan', label: 'Mi Día', icon: CalendarCheck },
-  { to: '/calendario', label: 'Calendario', icon: CalendarDays },
-  { to: '/enfoque', label: 'Enfoque', icon: Timer },
-  { to: '/tareas', label: 'Tareas', icon: ListChecks },
-  { to: '/habitos', label: 'Hábitos', icon: Repeat },
-  { to: '/metas', label: 'Metas', icon: Target },
-  { to: '/finanzas', label: 'Finanzas', icon: Wallet },
-  { to: '/estadisticas', label: 'Estadísticas', icon: BarChart3 },
-  { to: '/recursos', label: 'Recursos', icon: Link2 },
-  { to: '/citas', label: 'Citas', icon: Quote },
-  { to: '/tablero', label: 'Tablero', icon: Pin },
-  { to: '/logros', label: 'Logros', icon: Trophy },
+const groups = [
+  {
+    label: 'Principal',
+    items: [
+      { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
+      { to: '/plan', label: 'Mi Día', icon: CalendarCheck },
+      { to: '/calendario', label: 'Calendario', icon: CalendarDays },
+    ],
+  },
+  {
+    label: 'Hacer',
+    items: [
+      { to: '/enfoque', label: 'Enfoque', icon: Timer },
+      { to: '/tareas', label: 'Tareas', icon: ListChecks },
+      { to: '/habitos', label: 'Hábitos', icon: Repeat },
+      { to: '/metas', label: 'Metas', icon: Target },
+    ],
+  },
+  {
+    label: 'Finanzas',
+    items: [
+      { to: '/finanzas', label: 'Finanzas', icon: Wallet },
+      { to: '/estadisticas', label: 'Estadísticas', icon: BarChart3 },
+    ],
+  },
+  {
+    label: 'Extra',
+    items: [
+      { to: '/recursos', label: 'Recursos', icon: Link2 },
+      { to: '/citas', label: 'Citas', icon: Quote },
+      { to: '/tablero', label: 'Tablero', icon: Pin },
+      { to: '/logros', label: 'Logros', icon: Trophy },
+    ],
+  },
 ]
 
 export function Sidebar({ onOpenThemes }: { onOpenThemes: () => void }) {
@@ -67,26 +87,32 @@ export function Sidebar({ onOpenThemes }: { onOpenThemes: () => void }) {
         )}
       </div>
 
-      {!collapsed && <div className="nav-label">Menú</div>}
-      <nav className="nav">
-        {items.map((it) => {
-          const Icon = it.icon
-          return (
-            <NavLink
-              key={it.to}
-              to={it.to}
-              end={it.end}
-              title={collapsed ? it.label : undefined}
-              className={({ isActive }) =>
-                'nav-item' + (isActive ? ' active' : '')
-              }
-            >
-              <Icon size={19} />
-              {!collapsed && <span>{it.label}</span>}
-            </NavLink>
-          )
-        })}
-      </nav>
+      <div className="nav-scroll">
+        {groups.map((group) => (
+          <div className="nav-group" key={group.label}>
+            {!collapsed && <div className="nav-label">{group.label}</div>}
+            <nav className="nav">
+              {group.items.map((it) => {
+                const Icon = it.icon
+                return (
+                  <NavLink
+                    key={it.to}
+                    to={it.to}
+                    end={it.end}
+                    title={collapsed ? it.label : undefined}
+                    className={({ isActive }) =>
+                      'nav-item' + (isActive ? ' active' : '')
+                    }
+                  >
+                    <Icon size={19} />
+                    {!collapsed && <span>{it.label}</span>}
+                  </NavLink>
+                )
+              })}
+            </nav>
+          </div>
+        ))}
+      </div>
 
       <div className="sidebar-foot">
         <SyncBadge collapsed={collapsed} />

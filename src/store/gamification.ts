@@ -231,6 +231,20 @@ export const ACHIEVEMENTS: Achievement[] = [
     },
   },
   {
+    id: 'goal-climber',
+    name: 'Escalador',
+    desc: 'Construye un ascenso de 3 niveles (meta → rama → sub-rama) en tu árbol de metas',
+    icon: '🧗',
+    check: (s) => {
+      const byId = new Map(s.goals.map((g) => [g.id, g]))
+      return s.goals.some((g) => {
+        const p = g.parentId ? byId.get(g.parentId) : undefined
+        const gp = p?.parentId ? byId.get(p.parentId) : undefined
+        return !!gp
+      })
+    },
+  },
+  {
     id: 'budgeter',
     name: 'Con presupuesto',
     desc: 'Define tu primer presupuesto mensual',
