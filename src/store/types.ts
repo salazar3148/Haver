@@ -32,16 +32,12 @@ export interface Budget {
 
 export type HabitFrequency = 'diario' | 'semanal'
 
-// Momento del día (opcional). '' = sin horario específico
-export type TimeOfDay = '' | 'manana' | 'dia' | 'tarde' | 'noche'
-
 export interface Habit {
   id: string
   name: string
   icon: string
   color: string
   frequency: HabitFrequency
-  timeOfDay: TimeOfDay
   targetPerWeek: number // veces por semana objetivo (para semanal)
   days: number[] // días de la semana en que aplica (0=Lu..6=Do); vacío = todos
   subs: { id: string; name: string }[] // sub-hábitos (ej. mañana/tarde/noche)
@@ -56,6 +52,21 @@ export interface ShoppingItem {
   id: string
   name: string
   bought: boolean
+  createdAt: number
+}
+
+// Nivel de deseo de un artículo de la wishlist
+export type WishPriority = 'baja' | 'media' | 'alta'
+
+// Artículo de la lista de deseos: algo que quiero comprar más adelante y
+// quiero tener a la vista con su precio (para ir soñando/planeando).
+export interface WishItem {
+  id: string
+  name: string
+  emoji: string
+  price: number
+  note: string
+  priority: WishPriority
   createdAt: number
 }
 
@@ -253,6 +264,7 @@ export interface AppState {
   plans: Record<string, DayPlan>
   supplies: Supply[]
   shopping: ShoppingItem[]
+  wishlist: WishItem[] // lista de deseos (cosas por comprar más adelante, con precio)
   events: CalendarEvent[]
   campaigns: Campaign[]
   frozenDays: string[] // días congelados (viaje/ausencia): no penalizan

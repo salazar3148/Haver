@@ -15,6 +15,7 @@ import { supabase, supabaseEnabled } from './lib/supabase'
 import { startSync, stopSync } from './store/useSync'
 import { Dashboard } from './pages/Dashboard'
 import { Finanzas } from './pages/Finanzas'
+import { Inventario } from './pages/Inventario'
 import { Habitos } from './pages/Habitos'
 import { Metas } from './pages/Metas'
 import { Logros } from './pages/Logros'
@@ -136,6 +137,7 @@ function Shell({ picker, setPicker, effects }: { picker: boolean; setPicker: (v:
             <Route path="/habitos" element={<Habitos />} />
             <Route path="/metas" element={<Metas />} />
             <Route path="/finanzas" element={<Finanzas />} />
+            <Route path="/inventario" element={<Inventario />} />
             <Route path="/estadisticas" element={<Estadisticas />} />
             <Route path="/recursos" element={<Recursos />} />
             <Route path="/citas" element={<Citas />} />

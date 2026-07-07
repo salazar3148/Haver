@@ -10,6 +10,7 @@ import type {
   FocusSession,
   Lapse,
   Supply,
+  WishItem,
   CalendarEvent,
   Campaign,
   Resource,
@@ -35,6 +36,7 @@ interface Store extends AppState {
   removeBudget: (id: string) => void
   // habitos
   addHabit: (h: Omit<Habit, 'id' | 'createdAt' | 'log'>) => void
+  updateHabit: (id: string, patch: Partial<Omit<Habit, 'id' | 'createdAt' | 'log'>>) => void
   toggleHabit: (id: string, date: string) => void
   toggleHabitSub: (id: string, date: string, subId: string) => void
   removeHabit: (id: string) => void
@@ -67,6 +69,10 @@ interface Store extends AppState {
   toggleShoppingItem: (id: string) => void
   removeShoppingItem: (id: string) => void
   clearBoughtShopping: () => void
+  // lista de deseos (wishlist)
+  addWish: (w: Omit<WishItem, 'id' | 'createdAt'>) => void
+  removeWish: (id: string) => void
+  moveWishToShopping: (id: string) => void
   // tropiezos / fallas
   addLapse: (l: Omit<Lapse, 'id' | 'createdAt'>) => void
   removeLapse: (id: string) => void
@@ -113,6 +119,7 @@ const initial: AppState = {
   plans: {},
   supplies: [],
   shopping: [],
+  wishlist: [],
   events: [],
   campaigns: [],
   frozenDays: [],
@@ -248,6 +255,15 @@ export const useStore = create<Store>()(
             ),
           }))
           award(full ? -XP.habitDone : XP.habitDone)
+          checkAchievements()
+        },
+        updateHabit: (id, patch) => {
+          set((st) => ({
+            habits: st.habits.map((h) => (h.id === id ? { ...h, ...patch } : h)),
+          }))
+          // Editar un hábito no deja rastro propio en AppState: se marca como
+          // feature usada para que el logro "Afinador" pueda comprobarlo (§6.1).
+          get().markFeatureUsed('edit-habit')
           checkAchievements()
         },
         toggleHabitSub: (id, date, subId) => {
@@ -503,6 +519,28 @@ export const useStore = create<Store>()(
         clearBoughtShopping: () =>
           set((st) => ({ shopping: st.shopping.filter((x) => !x.bought) })),
 
+        addWish: (w) => {
+          set((st) => ({
+            wishlist: [{ ...w, id: uid(), createdAt: Date.now() }, ...st.wishlist],
+          }))
+          checkAchievements()
+        },
+        removeWish: (id) =>
+          set((st) => ({ wishlist: st.wishlist.filter((x) => x.id !== id) })),
+        moveWishToShopping: (id) => {
+          const w = get().wishlist.find((x) => x.id === id)
+          if (!w) return
+          set((st) => ({
+            shopping: [
+              { id: uid(), name: w.name, bought: false, createdAt: Date.now() },
+              ...st.shopping,
+            ],
+            wishlist: st.wishlist.filter((x) => x.id !== id),
+          }))
+          get().markFeatureUsed('wish-to-shopping')
+          checkAchievements()
+        },
+
         addLapse: (l) => {
           set((st) => ({
             lapses: [{ ...l, id: uid(), createdAt: Date.now() }, ...st.lapses],
@@ -662,7 +700,7 @@ export const useStore = create<Store>()(
     },
     {
       name: 'vida-quest-v1',
-      version: 16,
+      version: 18,
       migrate: (persisted: any, version: number) => {
         if (!persisted) return persisted
         const s = persisted
@@ -741,6 +779,17 @@ export const useStore = create<Store>()(
         if (version < 16) {
           // Nuevos tipos de nota (frame/text/sticker) con w/h opcionales.
           s.boardNotes = s.boardNotes ?? []
+        }
+        if (version < 17) {
+          // Se eliminó la categoría "momento del día" (timeOfDay) de los hábitos.
+          s.habits = (s.habits ?? []).map((h: any) => {
+            const { timeOfDay, ...rest } = h
+            return rest
+          })
+        }
+        if (version < 18) {
+          // Nuevo módulo "Inventario": lista de deseos (wishlist).
+          s.wishlist = s.wishlist ?? []
         }
         return s
       },

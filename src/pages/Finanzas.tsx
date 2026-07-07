@@ -12,9 +12,6 @@ import {
   Wallet,
   Lightbulb,
   Gauge,
-  PackageOpen,
-  ShoppingCart,
-  Check,
 } from 'lucide-react'
 import {
   BarChart,
@@ -38,8 +35,6 @@ import {
   currentMonthKey,
   addMonthsKey,
   daysInMonthKey,
-  addDays,
-  daysUntil,
 } from '../utils/date'
 import type { TxType } from '../store/types'
 
@@ -60,15 +55,6 @@ export function Finanzas() {
     removeDebt,
     setBudget,
     removeBudget,
-    supplies,
-    addSupply,
-    restockSupply,
-    removeSupply,
-    shopping,
-    addShoppingItem,
-    toggleShoppingItem,
-    removeShoppingItem,
-    clearBoughtShopping,
   } = useStore()
 
   const [txModal, setTxModal] = useState(false)
@@ -87,13 +73,6 @@ export function Finanzas() {
 
   const [bCat, setBCat] = useState('Comida')
   const [bLimit, setBLimit] = useState('')
-
-  const [supplyModal, setSupplyModal] = useState(false)
-  const [sName, setSName] = useState('')
-  const [sEmoji, setSEmoji] = useState('🧴')
-  const [sDuration, setSDuration] = useState('30')
-  const [sPrice, setSPrice] = useState('')
-  const [shopInput, setShopInput] = useState('')
 
   const [month, setMonth] = useState(currentMonthKey())
   const isCurrentMonth = month === currentMonthKey()
@@ -164,26 +143,6 @@ export function Finanzas() {
     setBLimit('')
     setBudgetModal(false)
   }
-  const saveSupply = () => {
-    if (!sName.trim()) return
-    addSupply({
-      name: sName.trim(),
-      emoji: sEmoji || '🧴',
-      durationDays: parseInt(sDuration) || 30,
-      price: parseFloat(sPrice) || 0,
-    })
-    setSName('')
-    setSEmoji('🧴')
-    setSDuration('30')
-    setSPrice('')
-    setSupplyModal(false)
-  }
-
-  const suppliesSorted = useMemo(() => {
-    return [...supplies]
-      .map((s) => ({ ...s, daysLeft: daysUntil(addDays(s.lastBought, s.durationDays)) }))
-      .sort((a, b) => a.daysLeft - b.daysLeft)
-  }, [supplies])
   const openTx = (t: TxType) => {
     setType(t)
     setCategory(CATS[t][0])
@@ -382,100 +341,6 @@ export function Finanzas() {
       </div>
 
       <div className="card" style={{ marginBottom: 18 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <div className="card-title" style={{ margin: 0 }}><PackageOpen size={16} /> Cosas por acabarse</div>
-          <button className="btn btn-sm" onClick={() => setSupplyModal(true)}><Plus size={14} /> Agregar</button>
-        </div>
-        {supplies.length === 0 ? (
-          <Empty emoji="🧴" text="Agrega tus consumibles (pasta, café, jabón...) y te aviso cuándo están por acabarse." />
-        ) : (
-          <div className="list">
-            {suppliesSorted.map((s) => {
-              const dl = s.daysLeft
-              const cls = dl <= 2 ? 'red' : dl <= 7 ? 'amber' : 'green'
-              const txt = dl < 0 ? `se acabó hace ${-dl}d` : dl === 0 ? 'se acaba hoy' : `${dl} días`
-              return (
-                <div className="list-row" key={s.id}>
-                  <div className="row-icon" style={{ fontSize: 20, background: 'var(--panel-2)' }}>{s.emoji}</div>
-                  <div className="row-main">
-                    <div className="row-title">{s.name}</div>
-                    <div className="row-sub">dura ~{s.durationDays}d{s.price > 0 ? ` · ${currency(s.price)}` : ''}</div>
-                  </div>
-                  <span className={`chip ${cls}`}>{txt}</span>
-                  <button className="btn btn-sm btn-primary" onClick={() => restockSupply(s.id)} title="Marcar como recomprado (reinicia el conteo)">
-                    <ShoppingCart size={13} /> Compré
-                  </button>
-                  <button className="icon-btn" onClick={() => removeSupply(s.id)}><Trash2 size={15} /></button>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
-
-      <div className="card" style={{ marginBottom: 18 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-          <div className="card-title" style={{ margin: 0 }}><ShoppingCart size={16} /> Lista de compras</div>
-          {shopping.some((s) => s.bought) && (
-            <button className="btn btn-sm" onClick={clearBoughtShopping}>Quitar comprados</button>
-          )}
-        </div>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-          <input
-            className="input"
-            value={shopInput}
-            onChange={(e) => setShopInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && shopInput.trim()) {
-                addShoppingItem(shopInput)
-                setShopInput('')
-              }
-            }}
-            placeholder="Ej. Bolsas de basura, jabón..."
-          />
-          <button
-            className="btn btn-primary"
-            onClick={() => {
-              if (shopInput.trim()) {
-                addShoppingItem(shopInput)
-                setShopInput('')
-              }
-            }}
-          >
-            <Plus size={16} />
-          </button>
-        </div>
-        {shopping.length === 0 ? (
-          <Empty emoji="🛒" text="Anota lo que te hace falta comprar y ve tachándolo." />
-        ) : (
-          <div className="list">
-            {[...shopping].sort((a, b) => Number(a.bought) - Number(b.bought)).map((s) => (
-              <div className="list-row" key={s.id}>
-                <button
-                  className="icon-btn"
-                  style={{
-                    borderRadius: 9,
-                    color: s.bought ? '#fff' : 'var(--muted)',
-                    background: s.bought ? 'linear-gradient(135deg,#34d399,#059669)' : undefined,
-                    borderColor: s.bought ? 'transparent' : undefined,
-                  }}
-                  onClick={() => toggleShoppingItem(s.id)}
-                >
-                  <Check size={16} />
-                </button>
-                <div className="row-main">
-                  <div className="row-title" style={{ textDecoration: s.bought ? 'line-through' : 'none', opacity: s.bought ? 0.55 : 1 }}>
-                    {s.name}
-                  </div>
-                </div>
-                <button className="icon-btn" onClick={() => removeShoppingItem(s.id)}><Trash2 size={15} /></button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="card" style={{ marginBottom: 18 }}>
         <div className="card-title"><BarChart3 size={16} /> Ingresos vs Gastos (últimos meses)</div>
         {monthly.length === 0 ? (
           <Empty emoji="📊" text="Sin datos todavía" />
@@ -616,33 +481,6 @@ export function Finanzas() {
           <input className="input" type="number" value={bLimit} onChange={(e) => setBLimit(e.target.value)} placeholder="Ej. 3000" autoFocus />
         </div>
         <button className="btn btn-primary" style={{ width: '100%' }} onClick={saveBudget}><Plus size={16} /> Guardar presupuesto</button>
-      </Modal>
-
-      <Modal open={supplyModal} onClose={() => setSupplyModal(false)} title="Cosa por acabarse">
-        <div className="row">
-          <div className="field" style={{ flex: '0 0 80px' }}>
-            <label>Ícono</label>
-            <input className="input" value={sEmoji} onChange={(e) => setSEmoji(e.target.value)} maxLength={2} style={{ textAlign: 'center', fontSize: 18 }} />
-          </div>
-          <div className="field">
-            <label>Nombre</label>
-            <input className="input" value={sName} onChange={(e) => setSName(e.target.value)} placeholder="Ej. Pasta de dientes" autoFocus />
-          </div>
-        </div>
-        <div className="row">
-          <div className="field">
-            <label>¿Cuántos días te dura?</label>
-            <input className="input" type="number" value={sDuration} onChange={(e) => setSDuration(e.target.value)} placeholder="30" />
-          </div>
-          <div className="field">
-            <label>Precio (opcional)</label>
-            <input className="input" type="number" value={sPrice} onChange={(e) => setSPrice(e.target.value)} placeholder="0" />
-          </div>
-        </div>
-        <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 14 }}>
-          Si pones precio, al marcar "Compré" se registra el gasto automáticamente en la categoría Compras.
-        </div>
-        <button className="btn btn-primary" style={{ width: '100%' }} onClick={saveSupply}><Plus size={16} /> Agregar a la lista</button>
       </Modal>
     </>
   )

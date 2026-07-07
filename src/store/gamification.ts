@@ -218,6 +218,13 @@ export const ACHIEVEMENTS: Achievement[] = [
     check: (s) => s.lapses.length >= 1,
   },
   {
+    id: 'habit-editor',
+    name: 'Afinador',
+    desc: 'Edita un hábito (nombre, días, sub-hábitos...) para ajustarlo a tu vida',
+    icon: '🛠️',
+    check: (s) => (s.game.usedFeatures ?? []).includes('edit-habit'),
+  },
+  {
     id: 'tree-builder',
     name: 'Divide y vencerás',
     desc: 'Crea una meta con al menos 2 sub-metas',
@@ -342,6 +349,20 @@ export const ACHIEVEMENTS: Achievement[] = [
     desc: 'Agrega algo a tu lista de compras',
     icon: '🛍️',
     check: (s) => (s.shopping ?? []).length >= 1,
+  },
+  {
+    id: 'wish-first',
+    name: 'Lista de deseos',
+    desc: 'Anota tu primer deseo con precio en el Inventario para tenerlo en la mira',
+    icon: '✨',
+    check: (s) => (s.wishlist ?? []).length >= 1,
+  },
+  {
+    id: 'wish-move',
+    name: 'Del deseo a la acción',
+    desc: 'Mueve un deseo a tu lista de compras cuando decidas ir por él',
+    icon: '🎯',
+    check: (s) => (s.game.usedFeatures ?? []).includes('wish-to-shopping'),
   },
   {
     id: 'restock-hero',

@@ -11,6 +11,7 @@ import {
   CalendarCheck,
   CalendarDays,
   BarChart3,
+  Package,
   Link2,
   Quote,
   Pin,
@@ -45,6 +46,7 @@ const groups = [
     label: 'Finanzas',
     items: [
       { to: '/finanzas', label: 'Finanzas', icon: Wallet },
+      { to: '/inventario', label: 'Inventario', icon: Package },
       { to: '/estadisticas', label: 'Estadísticas', icon: BarChart3 },
     ],
   },
