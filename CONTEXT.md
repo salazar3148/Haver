@@ -27,7 +27,7 @@ esté **conectado entre componentes**, y potenciar sus ideas añadiéndoles valo
 ## 2. Stack y comandos
 
 - **React 18 + TypeScript + Vite 5**
-- **Zustand 5** con middleware `persist` (estado de negocio en `localStorage`, clave `vida-quest-v1`, **version: 12** con migraciones)
+- **Zustand 5** con middleware `persist` (estado de negocio en `localStorage`, clave `vida-quest-v1`, **version: 13** con migraciones)
 - **react-router-dom 6** con `HashRouter`
 - **Recharts 2** (gráficos)
 - **lucide-react** (íconos)
@@ -87,7 +87,8 @@ src/
     Finanzas.tsx          # ingresos/gastos/deudas/presupuestos + libro 2 columnas + consumibles + lista de compras
     Estadisticas.tsx      # puntualidad de metas, congelados, cumplimiento por hábito
     Recursos.tsx          # páginas web que aportan valor: título, URL, descripción y categoría
-    Logros.tsx            # "Jefe Final" (barra de logros) + marcador mes/año + trofeos (= mapa de funcionalidades) + respaldo/export-import + reset
+    Citas.tsx             # citas célebres guardadas para inspirarse: frase, autor, categoría, favoritas
+    Logros.tsx            # "Jefe Final" (barra de logros) + marcador mes/año + trofeos (= mapa de funcionalidades) + reset
   utils/
     date.ts               # utilidades de fecha (ISO LOCAL del dispositivo — nunca UTC, ver nota abajo)
     format.ts             # currency (COP), currencyShort (100k/1.2M), uid, clamp
@@ -132,6 +133,7 @@ AppState = {
   campaigns: Campaign[]         // objetivos/retos de varios días
   frozenDays: string[]          // días congelados (viaje/ausencia) — no penalizan
   resources: Resource[]         // páginas web que aportan valor (recursos guardados)
+  quotes: Quote[]                // citas célebres guardadas para inspirarse
   game: GameState               // {xp, achievements:string[], lastActiveDate, usedFeatures:string[]}
 }
 ```
@@ -178,6 +180,7 @@ ShoppingItem = { id,name,bought:boolean,createdAt }
 CalendarEvent = { id,title,date,time('HH:MM'|''),type:'reunion'|'cita'|'tarea'|'evento',note,done,createdAt }
 Campaign = { id,title,emoji,color,startDate,endDate,habitIds[],goalIds[],createdAt }
 Resource = { id,title,url,description,category(string libre),createdAt } // "Recursos": páginas web de valor
+Quote = { id,text,author,tag(string libre),favorite:boolean,createdAt } // "Citas": frases para inspirarse
 ```
 
 ---
@@ -196,6 +199,7 @@ compras: `addShoppingItem, toggleShoppingItem, removeShoppingItem, clearBoughtSh
 tropiezos: `addLapse, removeLapse`;
 calendario: `addEvent, toggleEvent, removeEvent, addCampaign, removeCampaign`;
 recursos: `addResource, removeResource`;
+citas: `addQuote, toggleQuoteFavorite, removeQuote`;
 sistema: `importState(Partial<AppState>) (reemplaza todo), resetAll, _award(xp), markFeatureUsed(feature) (marca game.usedFeatures para logros de funciones sin datos propios; ver §6.1)`.
 
 `checkAchievements()` se llama tras cambios relevantes; desbloquea logros (ya **no** dan XP).
@@ -203,10 +207,11 @@ sistema: `importState(Partial<AppState>) (reemplaza todo), resetAll, _award(xp),
 (fue una fuente real de bugs: `addLapse`, `addSupply`, `addEvent`, `addCampaign`,
 `toggleFrozenDay`, `freezeRange` y `addShoppingItem` no la llamaban y sus logros
 nunca se desbloqueaban — ya corregido, pero revísalo en cada acción nueva).
-Migraciones por versión (v2..v12) rellenan campos nuevos sin perder datos. **Al
+Migraciones por versión (v2..v13) rellenan campos nuevos sin perder datos. **Al
 agregar un campo a una entidad: subir `version` y añadir bloque `if (version < N)`.**
 v11 añadió `game.usedFeatures: string[]` para logros de funciones sin datos propios.
 v12 añadió `resources: Resource[]` (páginas web de valor, sección Recursos).
+v13 añadió `quotes: Quote[]` (citas célebres, sección Citas).
 
 ---
 
@@ -306,6 +311,7 @@ datos (sección 12).
 - **Finanzas** (mes seleccionable con ◀▶): stats (Balance/Ingresos/Gastos/Tasa de ahorro) en `currencyShort`; **Análisis** (promedio diario, mayor gasto, evaluación de ahorro); **Libro a 2 columnas**: Ingresos (verde, izquierda) | divisor | Gastos (rojo, derecha) con "+" para agregar en cada columna, **filtro por categoría**, totales vivos, borrar en hover; **Presupuestos** por categoría (barra verde/ámbar/rojo + excedente); gráfico Ingresos vs Gastos (últimos 6 meses); **Deudas** (abonar); **Cosas por acabarse** (consumibles con días restantes, "Compré" registra gasto); **Lista de compras** pendientes; movimientos del mes.
 - **Estadísticas**: puntualidad de metas (antes/en tiempo/después + % puntual); días congelados (total/mes + advertencia si abusas); cumplimiento por hábito histórico (%, cumplidos/parciales/no cumplidos/total/congelados + racha).
 - **Recursos**: guarda páginas web que aportan valor (`Resource`: title, url, description, category libre). Tarjetas agrupadas por categoría (colores fijos para Productividad/Finanzas/Salud/Estudio/General, gris para categorías nuevas), muestra el hostname y botón "Visitar" (`target="_blank" rel="noopener noreferrer"`). El campo URL acepta sin `https://` (se normaliza al guardar). Es, en esencia, una libreta de marcadores curados con explicación de "para qué sirve" cada uno.
+- **Citas**: guarda citas célebres para inspirarse (`Quote`: text, author, tag libre, favorite). "Cita del día" destacada arriba (aleatoria estable por día: prioriza favoritas si hay alguna, usa `Date.now()/86400000 % pool.length` para que no cambie durante el día). Modal "Sugeridas" con un banco fijo de ~8 frases (Aristóteles, Séneca, Epicteto, etc.) para agregar con un toque sin escribir nada. Filtro Todas/⭐Favoritas. Categorías con colores fijos (Disciplina, Estoicismo, Éxito, Motivación, Sabiduría, Perseverancia, General).
 - **Logros & Progreso**: **Jefe Final** (barra de vida = logros desbloqueados/total, avatar evoluciona 🐉→👹→😈→🏆); stats (Nivel, XP, Logros, Racha); **Marcador Mes/Año** con anillos de Realización (verde) y Fallas (rojo) + desglose por categoría + tropiezos; **Trofeos** (grid de logros); **Reiniciar** todo.
   - Ya **no** existe exportar/importar respaldo manual (JSON) ni el logro
     "backup-master": todo se guarda automáticamente en Supabase (sección 11), así

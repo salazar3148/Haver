@@ -13,6 +13,7 @@ import type {
   CalendarEvent,
   Campaign,
   Resource,
+  Quote,
 } from './types'
 import { uid } from '../utils/format'
 import { todayISO, startOfWeek, addDays } from '../utils/date'
@@ -76,6 +77,10 @@ interface Store extends AppState {
   // recursos (páginas web que aportan valor)
   addResource: (r: Omit<Resource, 'id' | 'createdAt'>) => void
   removeResource: (id: string) => void
+  // citas célebres
+  addQuote: (q: Omit<Quote, 'id' | 'createdAt' | 'favorite'>) => void
+  toggleQuoteFavorite: (id: string) => void
+  removeQuote: (id: string) => void
   // sistema
   importState: (data: Partial<AppState>) => void
   resetAll: () => void
@@ -101,6 +106,7 @@ const initial: AppState = {
   campaigns: [],
   frozenDays: [],
   resources: [],
+  quotes: [],
   game: { xp: 0, achievements: [], lastActiveDate: todayISO(), usedFeatures: [] },
 }
 
@@ -518,6 +524,19 @@ export const useStore = create<Store>()(
         removeResource: (id) =>
           set((st) => ({ resources: st.resources.filter((r) => r.id !== id) })),
 
+        addQuote: (q) => {
+          set((st) => ({
+            quotes: [{ ...q, favorite: false, id: uid(), createdAt: Date.now() }, ...st.quotes],
+          }))
+          checkAchievements()
+        },
+        toggleQuoteFavorite: (id) =>
+          set((st) => ({
+            quotes: st.quotes.map((q) => (q.id === id ? { ...q, favorite: !q.favorite } : q)),
+          })),
+        removeQuote: (id) =>
+          set((st) => ({ quotes: st.quotes.filter((q) => q.id !== id) })),
+
         importState: (data) =>
           set(() => ({
             transactions: data.transactions ?? [],
@@ -535,6 +554,7 @@ export const useStore = create<Store>()(
             campaigns: data.campaigns ?? [],
             frozenDays: data.frozenDays ?? [],
             resources: data.resources ?? [],
+            quotes: data.quotes ?? [],
             game: data.game
               ? { ...data.game, usedFeatures: data.game.usedFeatures ?? [] }
               : { xp: 0, achievements: [], lastActiveDate: todayISO(), usedFeatures: [] },
@@ -545,7 +565,7 @@ export const useStore = create<Store>()(
     },
     {
       name: 'vida-quest-v1',
-      version: 12,
+      version: 13,
       migrate: (persisted: any, version: number) => {
         if (!persisted) return persisted
         const s = persisted
@@ -606,6 +626,9 @@ export const useStore = create<Store>()(
         }
         if (version < 12) {
           s.resources = s.resources ?? []
+        }
+        if (version < 13) {
+          s.quotes = s.quotes ?? []
         }
         return s
       },

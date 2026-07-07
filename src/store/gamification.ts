@@ -395,6 +395,27 @@ export const ACHIEVEMENTS: Achievement[] = [
     icon: '📚',
     check: (s) => (s.resources ?? []).length >= 10,
   },
+  {
+    id: 'quote-collector',
+    name: 'Sabiduría guardada',
+    desc: 'Guarda tu primera cita célebre para inspirarte',
+    icon: '💬',
+    check: (s) => (s.quotes ?? []).length >= 1,
+  },
+  {
+    id: 'quote-shelf',
+    name: 'Estante de inspiración',
+    desc: 'Guarda 15 citas célebres',
+    icon: '🏛️',
+    check: (s) => (s.quotes ?? []).length >= 15,
+  },
+  {
+    id: 'quote-favorite',
+    name: 'Tu frase favorita',
+    desc: 'Marca una cita como favorita',
+    icon: '⭐',
+    check: (s) => (s.quotes ?? []).some((q) => q.favorite),
+  },
 ]
 
 /** Devuelve los ids de logros recién desbloqueados que no estaban antes. */

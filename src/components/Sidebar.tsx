@@ -12,6 +12,7 @@ import {
   CalendarDays,
   BarChart3,
   Link2,
+  Quote,
 } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { getLevelInfo, rankName } from '../store/gamification'
@@ -29,6 +30,7 @@ const items = [
   { to: '/finanzas', label: 'Finanzas', icon: Wallet },
   { to: '/estadisticas', label: 'Estadísticas', icon: BarChart3 },
   { to: '/recursos', label: 'Recursos', icon: Link2 },
+  { to: '/citas', label: 'Citas', icon: Quote },
   { to: '/logros', label: 'Logros', icon: Trophy },
 ]
 

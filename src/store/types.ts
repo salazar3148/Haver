@@ -102,6 +102,16 @@ export interface Resource {
   createdAt: number
 }
 
+// Cita célebre guardada para inspirarse (autor, texto, categoría libre)
+export interface Quote {
+  id: string
+  text: string
+  author: string
+  tag: string // categoría/tema libre (ej. "Disciplina", "Estoicismo", "Éxito")
+  favorite: boolean
+  createdAt: number
+}
+
 export interface GameState {
   xp: number
   achievements: string[] // ids de logros desbloqueados
@@ -215,5 +225,6 @@ export interface AppState {
   campaigns: Campaign[]
   frozenDays: string[] // días congelados (viaje/ausencia): no penalizan
   resources: Resource[] // páginas web que aportan valor (recursos guardados)
+  quotes: Quote[] // citas célebres guardadas para inspirarse
   game: GameState
 }
