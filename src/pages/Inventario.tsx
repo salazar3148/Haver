@@ -8,15 +8,83 @@ import {
   ShoppingCart,
   Sparkles,
   ArrowRight,
+  TrendingUp,
+  TrendingDown,
+  Store,
+  LineChart,
 } from 'lucide-react'
 import { useStore } from '../store/useStore'
+import { useUi } from '../store/useUi'
 import { Modal, Empty, Segmented } from '../components/ui'
+import { CurrencyToggle, UsdRateChip } from '../components/Money'
 import { XpWidget } from '../App'
-import { currency, currencyShort } from '../utils/format'
-import { addDays, daysUntil } from '../utils/date'
-import type { WishPriority } from '../store/types'
+import { currency, currencyShort, money, copHint, toCOP } from '../utils/format'
+import { addDays, daysUntil, todayISO, shortLabel } from '../utils/date'
+import type { WishPriority, Currency, PriceItem } from '../store/types'
 
-type Tab = 'consumibles' | 'compras' | 'deseos'
+type Tab = 'consumibles' | 'compras' | 'deseos' | 'precios'
+
+const PRICE_EMOJIS = ['🛒', '☕', '🥑', '🍗', '🥛', '🧀', '🍞', '🧻', '⛽', '💊', '🍫', '🧴']
+
+// Mini-gráfico de línea (sparkline) del histórico de precios.
+function Sparkline({ values, w = 132, h = 36 }: { values: number[]; w?: number; h?: number }) {
+  if (values.length < 2) return null
+  const min = Math.min(...values)
+  const max = Math.max(...values)
+  const range = max - min || 1
+  const step = w / (values.length - 1)
+  const pts = values.map((v, i) => {
+    const x = i * step
+    const y = h - 4 - ((v - min) / range) * (h - 8)
+    return [x, y] as const
+  })
+  const d = pts.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ')
+  const last = pts[pts.length - 1]
+  const up = values[values.length - 1] > values[0]
+  const color = up ? '#fb7185' : '#34d399'
+  return (
+    <svg width={w} height={h} className="sparkline" viewBox={`0 0 ${w} ${h}`}>
+      <path d={d} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+      <circle cx={last[0]} cy={last[1]} r={3.2} fill={color} />
+    </svg>
+  )
+}
+
+// Analiza el histórico (normalizado a COP) para saber si el último precio es
+// bueno o caro comparado con lo que sueles pagar.
+function analyzePrices(item: PriceItem, rate: number) {
+  const pts = [...item.history].sort((a, b) =>
+    a.date < b.date ? -1 : a.date > b.date ? 1 : a.createdAt - b.createdAt
+  )
+  const cop = pts.map((p) => toCOP(p.price, p.currency, rate))
+  const n = cop.length
+  const latest = n ? pts[n - 1] : null
+  const latestCOP = n ? cop[n - 1] : 0
+  const min = n ? Math.min(...cop) : 0
+  const max = n ? Math.max(...cop) : 0
+  const avg = n ? cop.reduce((a, b) => a + b, 0) / n : 0
+  let cls = 'neutral'
+  let txt = 'Registra al menos 2 precios para comparar'
+  let pct: number | null = null
+  if (n >= 2) {
+    const spread = max - min || 1
+    pct = Math.round(((latestCOP - avg) / avg) * 100)
+    if (latestCOP <= min + spread * 0.05) {
+      cls = 'great'
+      txt = '¡El más barato que has registrado! Buen momento'
+    } else if (latestCOP < avg) {
+      cls = 'good'
+      txt = 'Por debajo de tu promedio'
+    } else if (latestCOP <= avg + spread * 0.05) {
+      cls = 'mid'
+      txt = 'Cerca de tu promedio'
+    } else {
+      cls = 'high'
+      txt = 'Por encima de tu promedio (caro)'
+    }
+  }
+  return { pts, cop, latest, latestCOP, min, max, avg, cls, txt, pct, n }
+}
 
 const SUPPLY_EMOJIS = ['🧴', '🪥', '☕', '🧻', '🧼', '🥛', '🍚', '💊', '🧂', '🧽', '🚿', '🪒']
 const WISH_EMOJIS = ['🎧', '⌨️', '📱', '👟', '🎮', '📷', '⌚', '🚲', '💻', '🪑', '🎸', '🎁']
@@ -42,8 +110,14 @@ export function Inventario() {
     addWish,
     removeWish,
     moveWishToShopping,
+    priceItems,
+    addPriceItem,
+    removePriceItem,
+    addPricePoint,
+    removePricePoint,
   } = useStore()
 
+  const usdRate = useUi((s) => s.usdRate)
   const [tab, setTab] = useState<Tab>('consumibles')
 
   // Consumible
@@ -52,6 +126,7 @@ export function Inventario() {
   const [sEmoji, setSEmoji] = useState('🧴')
   const [sDuration, setSDuration] = useState('30')
   const [sPrice, setSPrice] = useState('')
+  const [sCur, setSCur] = useState<Currency>('COP')
 
   // Compras
   const [shopInput, setShopInput] = useState('')
@@ -63,6 +138,19 @@ export function Inventario() {
   const [wPrice, setWPrice] = useState('')
   const [wPriority, setWPriority] = useState<WishPriority>('media')
   const [wNote, setWNote] = useState('')
+  const [wCur, setWCur] = useState<Currency>('COP')
+
+  // Precios: crear producto a seguir
+  const [priceItemModal, setPriceItemModal] = useState(false)
+  const [piName, setPiName] = useState('')
+  const [piEmoji, setPiEmoji] = useState('🛒')
+  const [piUnit, setPiUnit] = useState('')
+  // Precios: registrar un precio para un producto (ppItem = id abierto)
+  const [ppItem, setPpItem] = useState<string | null>(null)
+  const [ppPrice, setPpPrice] = useState('')
+  const [ppCur, setPpCur] = useState<Currency>('COP')
+  const [ppStore, setPpStore] = useState('')
+  const [ppDate, setPpDate] = useState(todayISO())
 
   const suppliesSorted = useMemo(
     () =>
@@ -74,7 +162,7 @@ export function Inventario() {
   const soonCount = suppliesSorted.filter((s) => s.daysLeft <= 7).length
   const pendingShop = shopping.filter((s) => !s.bought).length
   const boughtShop = shopping.filter((s) => s.bought).length
-  const wishTotal = wishlist.reduce((a, w) => a + (w.price || 0), 0)
+  const wishTotal = wishlist.reduce((a, w) => a + toCOP(w.price || 0, w.currency, usdRate), 0)
   const wishSorted = useMemo(
     () => [...wishlist].sort((a, b) => PRIORITY_META[a.priority].order - PRIORITY_META[b.priority].order),
     [wishlist]
@@ -87,11 +175,13 @@ export function Inventario() {
       emoji: sEmoji || '🧴',
       durationDays: parseInt(sDuration) || 30,
       price: parseFloat(sPrice) || 0,
+      currency: sCur,
     })
     setSName('')
     setSEmoji('🧴')
     setSDuration('30')
     setSPrice('')
+    setSCur('COP')
     setSupplyModal(false)
   }
 
@@ -101,6 +191,7 @@ export function Inventario() {
       name: wName.trim(),
       emoji: wEmoji || '🎁',
       price: parseFloat(wPrice) || 0,
+      currency: wCur,
       note: wNote.trim(),
       priority: wPriority,
     })
@@ -109,6 +200,7 @@ export function Inventario() {
     setWPrice('')
     setWNote('')
     setWPriority('media')
+    setWCur('COP')
     setWishModal(false)
   }
 
@@ -118,6 +210,29 @@ export function Inventario() {
     setShopInput('')
   }
 
+  const savePriceItem = () => {
+    if (!piName.trim()) return
+    addPriceItem({ name: piName.trim(), emoji: piEmoji || '🛒', unit: piUnit.trim() })
+    setPiName('')
+    setPiEmoji('🛒')
+    setPiUnit('')
+    setPriceItemModal(false)
+  }
+  const openAddPrice = (id: string) => {
+    setPpItem(id)
+    setPpPrice('')
+    setPpStore('')
+    setPpCur('COP')
+    setPpDate(todayISO())
+  }
+  const savePricePoint = () => {
+    const n = parseFloat(ppPrice)
+    if (!ppItem || !n || n <= 0) return
+    addPricePoint(ppItem, { price: n, currency: ppCur, store: ppStore.trim(), date: ppDate })
+    setPpItem(null)
+  }
+  const ppItemObj = ppItem ? priceItems.find((p) => p.id === ppItem) : null
+
   return (
     <>
       <div className="page-head">
@@ -125,7 +240,10 @@ export function Inventario() {
           <div className="page-title">Inventario</div>
           <div className="page-sub">Tus consumibles, tu lista de compras y tus deseos, todo en un solo cofre</div>
         </div>
-        <XpWidget />
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <UsdRateChip />
+          <XpWidget />
+        </div>
       </div>
 
       {/* Resumen */}
@@ -159,6 +277,7 @@ export function Inventario() {
             { value: 'consumibles', label: `🔋 Consumibles${supplies.length ? ` (${supplies.length})` : ''}` },
             { value: 'compras', label: `🛒 Compras${pendingShop ? ` (${pendingShop})` : ''}` },
             { value: 'deseos', label: `✨ Deseos${wishlist.length ? ` (${wishlist.length})` : ''}` },
+            { value: 'precios', label: `📉 Precios${priceItems.length ? ` (${priceItems.length})` : ''}` },
           ]}
         />
       </div>
@@ -190,7 +309,7 @@ export function Inventario() {
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div className="supply-name">{s.name}</div>
                         <div className="supply-sub">
-                          dura ~{s.durationDays}d{s.price > 0 ? ` · ${currency(s.price)}` : ''}
+                          dura ~{s.durationDays}d{s.price > 0 ? ` · ${money(s.price, s.currency)}` : ''}
                         </div>
                       </div>
                       <button className="icon-btn" onClick={() => removeSupply(s.id)} title="Eliminar">
@@ -301,7 +420,12 @@ export function Inventario() {
                     </div>
                     <div className="wish-name">{w.name}</div>
                     {w.note && <div className="wish-note">{w.note}</div>}
-                    <div className="wish-price">{w.price > 0 ? currency(w.price) : 'Sin precio'}</div>
+                    <div className="wish-price">
+                      {w.price > 0 ? money(w.price, w.currency) : 'Sin precio'}
+                      {w.price > 0 && w.currency === 'USD' && (
+                        <span className="wish-cop">{copHint(w.price, w.currency, usdRate)}</span>
+                      )}
+                    </div>
                     <div className="wish-actions">
                       <button
                         className="btn btn-sm btn-primary"
@@ -314,6 +438,116 @@ export function Inventario() {
                         <Trash2 size={15} />
                       </button>
                     </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ===== PRECIOS (seguimiento de compras recurrentes) ===== */}
+      {tab === 'precios' && (
+        <>
+          <div style={{ marginBottom: 16 }}>
+            <button className="btn btn-primary" onClick={() => setPriceItemModal(true)}>
+              <Plus size={16} /> Seguir un producto
+            </button>
+          </div>
+          {priceItems.length === 0 ? (
+            <div className="card">
+              <Empty
+                emoji="📉"
+                text="Sigue el precio de lo que compras seguido (café, arroz, gasolina...). Cada vez que veas su precio, regístralo y te digo si está barato o caro según tu historial."
+              />
+            </div>
+          ) : (
+            <div className="inv-grid">
+              {priceItems.map((it) => {
+                const a = analyzePrices(it, usdRate)
+                return (
+                  <div className={`card price-card ${a.cls}`} key={it.id}>
+                    <div className="price-head">
+                      <div className="price-emoji">{it.emoji}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className="price-name">{it.name}</div>
+                        {it.unit && <div className="price-unit">por {it.unit}</div>}
+                      </div>
+                      <button className="icon-btn" onClick={() => removePriceItem(it.id)} title="Dejar de seguir">
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+
+                    {a.n === 0 ? (
+                      <div className="price-empty">Aún sin precios. Registra el primero 👇</div>
+                    ) : (
+                      <>
+                        <div className="price-now-row">
+                          <div>
+                            <div className="price-now">
+                              {a.latest ? money(a.latest.price, a.latest.currency) : '—'}
+                            </div>
+                            <div className="price-now-sub">
+                              último precio
+                              {a.latest && a.latest.currency === 'USD' ? ` · ${copHint(a.latest.price, a.latest.currency, usdRate)}` : ''}
+                            </div>
+                          </div>
+                          <Sparkline values={a.cop} />
+                        </div>
+
+                        <div className={`price-verdict ${a.cls}`}>
+                          {a.cls === 'great' || a.cls === 'good' ? (
+                            <TrendingDown size={14} />
+                          ) : a.cls === 'high' ? (
+                            <TrendingUp size={14} />
+                          ) : (
+                            <LineChart size={14} />
+                          )}
+                          <span>{a.txt}</span>
+                          {a.pct != null && a.pct !== 0 && (
+                            <b>{a.pct > 0 ? `+${a.pct}%` : `${a.pct}%`}</b>
+                          )}
+                        </div>
+
+                        {a.n >= 2 && (
+                          <div className="price-stats">
+                            <div>
+                              <span className="ps-label">Mín</span>
+                              <span className="ps-val green">{currencyShort(a.min)}</span>
+                            </div>
+                            <div>
+                              <span className="ps-label">Prom</span>
+                              <span className="ps-val">{currencyShort(a.avg)}</span>
+                            </div>
+                            <div>
+                              <span className="ps-label">Máx</span>
+                              <span className="ps-val red">{currencyShort(a.max)}</span>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="price-history">
+                          {[...a.pts].reverse().slice(0, 4).map((p) => (
+                            <div className="ph-row" key={p.id}>
+                              <span className="ph-date">{shortLabel(p.date)}</span>
+                              {p.store && (
+                                <span className="ph-store">
+                                  <Store size={11} /> {p.store}
+                                </span>
+                              )}
+                              <span className="ph-price">{money(p.price, p.currency)}</span>
+                              <button className="icon-btn" style={{ width: 24, height: 24 }} onClick={() => removePricePoint(it.id, p.id)}>
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+
+                    <button className="btn btn-sm price-add" onClick={() => openAddPrice(it.id)}>
+                      <Plus size={14} /> Registrar precio
+                    </button>
                   </div>
                 )
               })}
@@ -344,9 +578,13 @@ export function Inventario() {
             <input className="input" type="number" value={sDuration} onChange={(e) => setSDuration(e.target.value)} placeholder="30" />
           </div>
           <div className="field">
-            <label>Precio (opcional)</label>
-            <input className="input" type="number" value={sPrice} onChange={(e) => setSPrice(e.target.value)} placeholder="0" />
+            <label>Moneda del precio</label>
+            <CurrencyToggle value={sCur} onChange={setSCur} />
           </div>
+        </div>
+        <div className="field">
+          <label>Precio (opcional)</label>
+          <input className="input" type="number" step={sCur === 'USD' ? '0.01' : '1'} value={sPrice} onChange={(e) => setSPrice(e.target.value)} placeholder={sCur === 'USD' ? '0.00' : '0'} />
         </div>
         <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 14 }}>
           Si pones precio, al "Reabastecer" se registra el gasto automáticamente en la categoría Compras.
@@ -372,10 +610,17 @@ export function Inventario() {
           <label>¿Qué quieres?</label>
           <input className="input" value={wName} onChange={(e) => setWName(e.target.value)} placeholder="Ej. Audífonos con cancelación de ruido" autoFocus />
         </div>
+        <div className="field">
+          <label>Moneda</label>
+          <CurrencyToggle value={wCur} onChange={setWCur} />
+        </div>
         <div className="row">
           <div className="field">
             <label>Precio aprox.</label>
-            <input className="input" type="number" value={wPrice} onChange={(e) => setWPrice(e.target.value)} placeholder="Ej. 350000" />
+            <input className="input" type="number" step={wCur === 'USD' ? '0.01' : '1'} value={wPrice} onChange={(e) => setWPrice(e.target.value)} placeholder={wCur === 'USD' ? 'Ej. 90' : 'Ej. 350000'} />
+            {wCur === 'USD' && wPrice && parseFloat(wPrice) > 0 && (
+              <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 6 }}>{copHint(parseFloat(wPrice), 'USD', usdRate)} hoy</div>
+            )}
           </div>
           <div className="field">
             <label>¿Cuánto lo quieres?</label>
@@ -392,6 +637,67 @@ export function Inventario() {
         </div>
         <button className="btn btn-primary" style={{ width: '100%' }} onClick={saveWish}>
           <Sparkles size={16} /> Añadir a mis deseos
+        </button>
+      </Modal>
+
+      {/* Modal: seguir un producto (precios) */}
+      <Modal open={priceItemModal} onClose={() => setPriceItemModal(false)} title="Seguir un producto">
+        <div className="field">
+          <label>Ícono</label>
+          <div className="emoji-pick">
+            {PRICE_EMOJIS.map((e) => (
+              <button key={e} className={piEmoji === e ? 'active' : ''} onClick={() => setPiEmoji(e)}>
+                {e}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="field">
+          <label>Producto</label>
+          <input className="input" value={piName} onChange={(e) => setPiName(e.target.value)} placeholder="Ej. Café molido 500g" autoFocus />
+        </div>
+        <div className="field">
+          <label>Cantidad de referencia (opcional)</label>
+          <input className="input" value={piUnit} onChange={(e) => setPiUnit(e.target.value)} placeholder="Ej. 500 g, 1 L, unidad..." />
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 14 }}>
+          Registra el precio cada vez que lo veas y compararé si está barato o caro frente a tu historial.
+        </div>
+        <button className="btn btn-primary" style={{ width: '100%' }} onClick={savePriceItem}>
+          <Plus size={16} /> Empezar a seguirlo
+        </button>
+      </Modal>
+
+      {/* Modal: registrar un precio */}
+      <Modal open={ppItem !== null} onClose={() => setPpItem(null)} title={ppItemObj ? `Precio de ${ppItemObj.name}` : 'Registrar precio'}>
+        <div className="field">
+          <label>Moneda</label>
+          <CurrencyToggle value={ppCur} onChange={setPpCur} />
+        </div>
+        <div className="row">
+          <div className="field">
+            <label>Precio</label>
+            <input
+              className="input"
+              type="number"
+              step={ppCur === 'USD' ? '0.01' : '1'}
+              value={ppPrice}
+              onChange={(e) => setPpPrice(e.target.value)}
+              placeholder={ppCur === 'USD' ? '0.00' : '0'}
+              autoFocus
+            />
+          </div>
+          <div className="field">
+            <label>Fecha</label>
+            <input className="input" type="date" value={ppDate} onChange={(e) => setPpDate(e.target.value)} />
+          </div>
+        </div>
+        <div className="field">
+          <label>¿Dónde? (opcional)</label>
+          <input className="input" value={ppStore} onChange={(e) => setPpStore(e.target.value)} placeholder="Ej. D1, Éxito, tienda del barrio..." />
+        </div>
+        <button className="btn btn-primary" style={{ width: '100%' }} onClick={savePricePoint}>
+          <Plus size={16} /> Guardar precio
         </button>
       </Modal>
     </>

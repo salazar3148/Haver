@@ -27,6 +27,30 @@ export const currencyShort = (n: number) => {
   return currency(n)
 }
 
+// ===== Multi-moneda (COP / USD) =====
+import type { Currency } from '../store/types'
+
+// Formatea un monto en dólares con 2 decimales: "US$12.50"
+export const usd = (n: number) =>
+  'US$' +
+  new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(n)
+
+// Formatea un monto en su moneda nativa (COP entero, USD con decimales).
+export const money = (n: number, cur: Currency) => (cur === 'USD' ? usd(n) : currency(n))
+
+// Versión compacta según la moneda.
+export const moneyShort = (n: number, cur: Currency) => (cur === 'USD' ? usd(n) : currencyShort(n))
+
+// Convierte cualquier monto a COP usando la tasa del día (COP por 1 USD).
+export const toCOP = (n: number, cur: Currency, rate: number) => (cur === 'USD' ? n * rate : n)
+
+// Texto de equivalencia en COP cuando el monto está en dólares (si no, vacío).
+export const copHint = (n: number, cur: Currency, rate: number) =>
+  cur === 'USD' ? `≈ ${currencyShort(n * rate)}` : ''
+
 export const uid = () =>
   Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
 

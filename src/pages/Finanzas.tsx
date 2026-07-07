@@ -23,9 +23,11 @@ import {
   CartesianGrid,
 } from 'recharts'
 import { useStore } from '../store/useStore'
+import { useUi } from '../store/useUi'
 import { Modal, Bar, Empty } from '../components/ui'
+import { CurrencyToggle, UsdRateChip } from '../components/Money'
 import { XpWidget } from '../App'
-import { currency, currencyShort } from '../utils/format'
+import { currency, currencyShort, money, moneyShort, toCOP, copHint } from '../utils/format'
 import {
   todayISO,
   shortLabel,
@@ -36,7 +38,7 @@ import {
   addMonthsKey,
   daysInMonthKey,
 } from '../utils/date'
-import type { TxType } from '../store/types'
+import type { TxType, Currency } from '../store/types'
 
 const CATS = {
   gasto: ['Comida', 'Transporte', 'Renta', 'Servicios', 'Ocio', 'Salud', 'Compras', 'Otros'],
@@ -57,11 +59,14 @@ export function Finanzas() {
     removeBudget,
   } = useStore()
 
+  const usdRate = useUi((s) => s.usdRate)
+
   const [txModal, setTxModal] = useState(false)
   const [debtModal, setDebtModal] = useState(false)
   const [budgetModal, setBudgetModal] = useState(false)
   const [type, setType] = useState<TxType>('gasto')
   const [amount, setAmount] = useState('')
+  const [cur, setCur] = useState<Currency>('COP')
   const [category, setCategory] = useState('Comida')
   const [desc, setDesc] = useState('')
   const [date, setDate] = useState(todayISO())
@@ -69,10 +74,12 @@ export function Finanzas() {
   const [dName, setDName] = useState('')
   const [dCreditor, setDCreditor] = useState('')
   const [dTotal, setDTotal] = useState('')
+  const [dCur, setDCur] = useState<Currency>('COP')
   const [dDue, setDDue] = useState(todayISO())
 
   const [bCat, setBCat] = useState('Comida')
   const [bLimit, setBLimit] = useState('')
+  const [bCur, setBCur] = useState<Currency>('COP')
 
   const [month, setMonth] = useState(currentMonthKey())
   const isCurrentMonth = month === currentMonthKey()
@@ -83,8 +90,10 @@ export function Finanzas() {
     () => transactions.filter((t) => monthKey(t.date) === month),
     [transactions, month]
   )
-  const income = monthTx.filter((t) => t.type === 'ingreso').reduce((a, t) => a + t.amount, 0)
-  const expense = monthTx.filter((t) => t.type === 'gasto').reduce((a, t) => a + t.amount, 0)
+  // Todo se normaliza a COP para poder sumar/comparar montos en distintas monedas.
+  const cop = (amt: number, c: Currency) => toCOP(amt, c, usdRate)
+  const income = monthTx.filter((t) => t.type === 'ingreso').reduce((a, t) => a + cop(t.amount, t.currency), 0)
+  const expense = monthTx.filter((t) => t.type === 'gasto').reduce((a, t) => a + cop(t.amount, t.currency), 0)
   const balance = income - expense
   const savingsRate = income > 0 ? Math.round((balance / income) * 100) : 0
   const incomeTx = monthTx.filter((t) => t.type === 'ingreso')
@@ -92,8 +101,8 @@ export function Finanzas() {
   const allCats = [...new Set(monthTx.map((t) => t.category))].sort()
   const shownIncome = catFilter ? incomeTx.filter((t) => t.category === catFilter) : incomeTx
   const shownExpense = catFilter ? expenseTx.filter((t) => t.category === catFilter) : expenseTx
-  const shownIncomeTotal = shownIncome.reduce((a, t) => a + t.amount, 0)
-  const shownExpenseTotal = shownExpense.reduce((a, t) => a + t.amount, 0)
+  const shownIncomeTotal = shownIncome.reduce((a, t) => a + cop(t.amount, t.currency), 0)
+  const shownExpenseTotal = shownExpense.reduce((a, t) => a + cop(t.amount, t.currency), 0)
 
   // Promedio diario de gasto
   const dayDivisor = isCurrentMonth ? new Date().getDate() : daysInMonthKey(month)
@@ -102,9 +111,11 @@ export function Finanzas() {
   // Gasto por categoría (mes)
   const spentByCat = useMemo(() => {
     const m = new Map<string, number>()
-    monthTx.filter((t) => t.type === 'gasto').forEach((t) => m.set(t.category, (m.get(t.category) ?? 0) + t.amount))
+    monthTx
+      .filter((t) => t.type === 'gasto')
+      .forEach((t) => m.set(t.category, (m.get(t.category) ?? 0) + toCOP(t.amount, t.currency, usdRate)))
     return m
-  }, [monthTx])
+  }, [monthTx, usdRate])
   const topCat = [...spentByCat.entries()].sort((a, b) => b[1] - a[1])[0]
 
   // serie mensual ingresos vs gastos (global)
@@ -113,16 +124,16 @@ export function Finanzas() {
     transactions.forEach((t) => {
       const k = monthKey(t.date)
       const e = map.get(k) ?? { ingreso: 0, gasto: 0 }
-      e[t.type] += t.amount
+      e[t.type] += toCOP(t.amount, t.currency, usdRate)
       map.set(k, e)
     })
     return [...map.entries()].sort().slice(-6).map(([k, v]) => ({ mes: monthLabel(k), ...v }))
-  }, [transactions])
+  }, [transactions, usdRate])
 
   const saveTx = () => {
     const n = parseFloat(amount)
     if (!n || n <= 0) return
-    addTransaction({ type, amount: n, category, description: desc, date })
+    addTransaction({ type, amount: n, currency: cur, category, description: desc, date })
     setAmount('')
     setDesc('')
     setTxModal(false)
@@ -130,7 +141,7 @@ export function Finanzas() {
   const saveDebt = () => {
     const n = parseFloat(dTotal)
     if (!dName || !n || n <= 0) return
-    addDebt({ name: dName, creditor: dCreditor, total: n, dueDate: dDue })
+    addDebt({ name: dName, creditor: dCreditor, total: n, currency: dCur, dueDate: dDue })
     setDName('')
     setDCreditor('')
     setDTotal('')
@@ -139,7 +150,7 @@ export function Finanzas() {
   const saveBudget = () => {
     const n = parseFloat(bLimit)
     if (!n || n <= 0) return
-    setBudget(bCat, n)
+    setBudget(bCat, n, bCur)
     setBLimit('')
     setBudgetModal(false)
   }
@@ -173,6 +184,7 @@ export function Finanzas() {
             <ChevronRight size={16} />
           </button>
         </div>
+        <UsdRateChip />
         <div style={{ flex: 1 }} />
         <button className="btn btn-primary" onClick={() => openTx('ingreso')}>
           <TrendingUp size={16} /> Ingreso
@@ -256,9 +268,9 @@ export function Finanzas() {
                 <div className="ledger-row" key={t.id}>
                   <div className="l-main">
                     {t.category}{t.description ? ` · ${t.description}` : ''}
-                    <div className="l-sub">{shortLabel(t.date)}</div>
+                    <div className="l-sub">{shortLabel(t.date)}{t.currency === 'USD' ? ` · ${copHint(t.amount, t.currency, usdRate)}` : ''}</div>
                   </div>
-                  <span className="ledger-amt pos">+{currencyShort(t.amount)}</span>
+                  <span className="ledger-amt pos">+{moneyShort(t.amount, t.currency)}</span>
                   <button className="icon-btn" style={{ width: 26, height: 26 }} onClick={() => removeTransaction(t.id)}><Trash2 size={12} /></button>
                 </div>
               ))
@@ -285,9 +297,9 @@ export function Finanzas() {
                 <div className="ledger-row" key={t.id}>
                   <div className="l-main">
                     {t.category}{t.description ? ` · ${t.description}` : ''}
-                    <div className="l-sub">{shortLabel(t.date)}</div>
+                    <div className="l-sub">{shortLabel(t.date)}{t.currency === 'USD' ? ` · ${copHint(t.amount, t.currency, usdRate)}` : ''}</div>
                   </div>
-                  <span className="ledger-amt neg">-{currencyShort(t.amount)}</span>
+                  <span className="ledger-amt neg">-{moneyShort(t.amount, t.currency)}</span>
                   <button className="icon-btn" style={{ width: 26, height: 26 }} onClick={() => removeTransaction(t.id)}><Trash2 size={12} /></button>
                 </div>
               ))
@@ -314,9 +326,10 @@ export function Finanzas() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {budgets.map((b) => {
-              const spent = spentByCat.get(b.category) ?? 0
-              const pct = b.limit > 0 ? (spent / b.limit) * 100 : 0
-              const over = spent > b.limit
+              const spent = spentByCat.get(b.category) ?? 0 // ya en COP
+              const limitCOP = toCOP(b.limit, b.currency, usdRate)
+              const pct = limitCOP > 0 ? (spent / limitCOP) * 100 : 0
+              const over = spent > limitCOP
               const color = over ? 'pink' : pct >= 80 ? 'amber' : 'green'
               return (
                 <div key={b.id}>
@@ -324,15 +337,15 @@ export function Finanzas() {
                     <span style={{ fontWeight: 700 }}>{b.category}</span>
                     <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                       <span style={{ color: over ? 'var(--rose)' : 'var(--muted)' }}>
-                        {currencyShort(spent)} / {currencyShort(b.limit)}
-                        {over && ` · ${currencyShort(spent - b.limit)} de más`}
+                        {currencyShort(spent)} / {money(b.limit, b.currency)}
+                        {over && ` · ${currencyShort(spent - limitCOP)} de más`}
                       </span>
                       <button className="icon-btn" style={{ width: 28, height: 28 }} onClick={() => removeBudget(b.id)}>
                         <Trash2 size={13} />
                       </button>
                     </div>
                   </div>
-                  <Bar value={spent} max={b.limit} color={color} />
+                  <Bar value={spent} max={limitCOP} color={color} />
                 </div>
               )
             })}
@@ -375,10 +388,13 @@ export function Finanzas() {
                     <div>
                       <span style={{ fontWeight: 700 }}>{d.name}</span>{' '}
                       <span style={{ color: 'var(--muted)', fontSize: 12 }}>· {d.creditor}</span>
+                      {d.currency === 'USD' && (
+                        <span style={{ color: 'var(--faint)', fontSize: 11 }}> · {copHint(remaining, d.currency, usdRate)}</span>
+                      )}
                     </div>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                       <span style={{ fontSize: 13, color: paid ? 'var(--emerald)' : 'var(--muted)' }}>
-                        {paid ? '¡Liquidada! 🎉' : `Falta ${currency(remaining)}`}
+                        {paid ? '¡Liquidada! 🎉' : `Falta ${money(remaining, d.currency)}`}
                       </span>
                       {!paid && (
                         <button className="btn btn-sm btn-primary" onClick={() => payDebt(d.id, Math.min(remaining, d.total / 4 || remaining))}>
@@ -414,9 +430,9 @@ export function Finanzas() {
                       {t.category}
                       {t.description && <span style={{ color: 'var(--muted)', fontWeight: 400 }}> · {t.description}</span>}
                     </div>
-                    <div className="row-sub">{shortLabel(t.date)}</div>
+                    <div className="row-sub">{shortLabel(t.date)}{t.currency === 'USD' ? ` · ${copHint(t.amount, t.currency, usdRate)}` : ''}</div>
                   </div>
-                  <div className={`row-amount ${inc ? 'pos' : 'neg'}`}>{inc ? '+' : '-'}{currencyShort(t.amount)}</div>
+                  <div className={`row-amount ${inc ? 'pos' : 'neg'}`}>{inc ? '+' : '-'}{moneyShort(t.amount, t.currency)}</div>
                   <button className="icon-btn" onClick={() => removeTransaction(t.id)}><Trash2 size={15} /></button>
                 </div>
               )
@@ -427,8 +443,25 @@ export function Finanzas() {
 
       <Modal open={txModal} onClose={() => setTxModal(false)} title={type === 'ingreso' ? 'Nuevo ingreso' : 'Nuevo gasto'}>
         <div className="field">
-          <label>Monto</label>
-          <input className="input" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" autoFocus />
+          <label>Moneda</label>
+          <CurrencyToggle value={cur} onChange={setCur} />
+        </div>
+        <div className="field">
+          <label>Monto {cur === 'USD' ? '(en dólares, admite decimales)' : '(en pesos)'}</label>
+          <input
+            className="input"
+            type="number"
+            step={cur === 'USD' ? '0.01' : '1'}
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder={cur === 'USD' ? '0.00' : '0'}
+            autoFocus
+          />
+          {cur === 'USD' && amount && parseFloat(amount) > 0 && (
+            <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 6 }}>
+              {copHint(parseFloat(amount), 'USD', usdRate)} a la tasa de hoy
+            </div>
+          )}
         </div>
         <div className="field">
           <label>Categoría</label>
@@ -456,10 +489,14 @@ export function Finanzas() {
           <label>Acreedor</label>
           <input className="input" value={dCreditor} onChange={(e) => setDCreditor(e.target.value)} placeholder="Ej. Banco" />
         </div>
+        <div className="field">
+          <label>Moneda</label>
+          <CurrencyToggle value={dCur} onChange={setDCur} />
+        </div>
         <div className="row">
           <div className="field">
             <label>Monto total</label>
-            <input className="input" type="number" value={dTotal} onChange={(e) => setDTotal(e.target.value)} placeholder="0.00" />
+            <input className="input" type="number" step={dCur === 'USD' ? '0.01' : '1'} value={dTotal} onChange={(e) => setDTotal(e.target.value)} placeholder={dCur === 'USD' ? '0.00' : '0'} />
           </div>
           <div className="field">
             <label>Vencimiento</label>
@@ -477,8 +514,12 @@ export function Finanzas() {
           </select>
         </div>
         <div className="field">
+          <label>Moneda</label>
+          <CurrencyToggle value={bCur} onChange={setBCur} />
+        </div>
+        <div className="field">
           <label>Límite mensual</label>
-          <input className="input" type="number" value={bLimit} onChange={(e) => setBLimit(e.target.value)} placeholder="Ej. 3000" autoFocus />
+          <input className="input" type="number" step={bCur === 'USD' ? '0.01' : '1'} value={bLimit} onChange={(e) => setBLimit(e.target.value)} placeholder={bCur === 'USD' ? 'Ej. 50' : 'Ej. 3000'} autoFocus />
         </div>
         <button className="btn btn-primary" style={{ width: '100%' }} onClick={saveBudget}><Plus size={16} /> Guardar presupuesto</button>
       </Modal>

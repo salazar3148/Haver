@@ -30,7 +30,8 @@ import { XpWidget } from '../App'
 import { computeStreak } from '../store/gamification'
 import { goalProgress, isGoalDone } from '../store/goals'
 import { dayFraction, isDayFull } from '../store/habits'
-import { currency, currencyShort } from '../utils/format'
+import { currency, currencyShort, toCOP } from '../utils/format'
+import { useUi } from '../store/useUi'
 import { lastNDays, shortLabel, todayISO, addDays, daysUntil } from '../utils/date'
 
 const PIE_COLORS = [
@@ -48,15 +49,16 @@ export function Dashboard() {
   const { transactions, debts, habits, goals, tasks, focus } = useStore()
   const plans = useStore((s) => s.plans)
   const supplies = useStore((s) => s.supplies)
+  const usdRate = useUi((s) => s.usdRate)
 
   const income = transactions
     .filter((t) => t.type === 'ingreso')
-    .reduce((a, t) => a + t.amount, 0)
+    .reduce((a, t) => a + toCOP(t.amount, t.currency, usdRate), 0)
   const expense = transactions
     .filter((t) => t.type === 'gasto')
-    .reduce((a, t) => a + t.amount, 0)
+    .reduce((a, t) => a + toCOP(t.amount, t.currency, usdRate), 0)
   const balance = income - expense
-  const totalDebt = debts.reduce((a, d) => a + (d.total - d.paid), 0)
+  const totalDebt = debts.reduce((a, d) => a + toCOP(d.total - d.paid, d.currency, usdRate), 0)
   const streak = computeStreak(habits)
 
   const today = todayISO()
@@ -75,28 +77,27 @@ export function Dashboard() {
     let running = 0
     // base: balance antes de la ventana
     const startSet = new Set(days)
+    const val = (t: (typeof transactions)[number]) =>
+      (t.type === 'ingreso' ? 1 : -1) * toCOP(t.amount, t.currency, usdRate)
     transactions.forEach((t) => {
-      if (!startSet.has(t.date) && t.date < days[0])
-        running += t.type === 'ingreso' ? t.amount : -t.amount
+      if (!startSet.has(t.date) && t.date < days[0]) running += val(t)
     })
     return days.map((d) => {
-      transactions
-        .filter((t) => t.date === d)
-        .forEach((t) => (running += t.type === 'ingreso' ? t.amount : -t.amount))
+      transactions.filter((t) => t.date === d).forEach((t) => (running += val(t)))
       return { day: shortLabel(d), balance: running }
     })
-  }, [transactions])
+  }, [transactions, usdRate])
 
   // Gastos por categoría
   const byCategory = useMemo(() => {
     const map = new Map<string, number>()
     transactions
       .filter((t) => t.type === 'gasto')
-      .forEach((t) => map.set(t.category, (map.get(t.category) ?? 0) + t.amount))
+      .forEach((t) => map.set(t.category, (map.get(t.category) ?? 0) + toCOP(t.amount, t.currency, usdRate)))
     return [...map.entries()]
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value)
-  }, [transactions])
+  }, [transactions, usdRate])
 
   const activeGoals = goals.filter((g) => !isGoalDone(goals, g)).slice(0, 4)
 
@@ -353,7 +354,7 @@ export function Dashboard() {
       )}
 
       {suppliesSoon.length > 0 && (
-        <Link to="/finanzas" style={{ display: 'block', marginTop: 18 }}>
+        <Link to="/inventario" style={{ display: 'block', marginTop: 18 }}>
           <div className="card">
             <div className="card-title">🧴 Por acabarse pronto</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>

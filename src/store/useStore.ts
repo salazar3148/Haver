@@ -32,7 +32,7 @@ interface Store extends AppState {
   payDebt: (id: string, amount: number) => void
   removeDebt: (id: string) => void
   // presupuestos
-  setBudget: (category: string, limit: number) => void
+  setBudget: (category: string, limit: number, currency: import('./types').Currency) => void
   removeBudget: (id: string) => void
   // habitos
   addHabit: (h: Omit<Habit, 'id' | 'createdAt' | 'log'>) => void
@@ -73,6 +73,14 @@ interface Store extends AppState {
   addWish: (w: Omit<WishItem, 'id' | 'createdAt'>) => void
   removeWish: (id: string) => void
   moveWishToShopping: (id: string) => void
+  // seguimiento de precios recurrentes
+  addPriceItem: (item: { name: string; emoji: string; unit: string }) => void
+  removePriceItem: (id: string) => void
+  addPricePoint: (
+    itemId: string,
+    point: { price: number; currency: import('./types').Currency; store: string; date: string }
+  ) => void
+  removePricePoint: (itemId: string, pointId: string) => void
   // tropiezos / fallas
   addLapse: (l: Omit<Lapse, 'id' | 'createdAt'>) => void
   removeLapse: (id: string) => void
@@ -98,6 +106,8 @@ interface Store extends AppState {
   addNoteItem: (id: string, text: string) => void
   toggleNoteItem: (id: string, itemId: string) => void
   removeNoteItem: (id: string, itemId: string) => void
+  // tablero (lienzo Excalidraw)
+  setBoardScene: (elements: any[], files: Record<string, any>) => void
   // sistema
   importState: (data: Partial<AppState>) => void
   resetAll: () => void
@@ -120,6 +130,8 @@ const initial: AppState = {
   supplies: [],
   shopping: [],
   wishlist: [],
+  priceItems: [],
+  boardScene: { elements: [], files: {} },
   events: [],
   campaigns: [],
   frozenDays: [],
@@ -215,19 +227,19 @@ export const useStore = create<Store>()(
         removeDebt: (id) =>
           set((st) => ({ debts: st.debts.filter((d) => d.id !== id) })),
 
-        setBudget: (category, limit) =>
+        setBudget: (category, limit, currency) =>
           set((st) => {
             const existing = st.budgets.find((b) => b.category === category)
             if (existing) {
               return {
                 budgets: st.budgets.map((b) =>
-                  b.category === category ? { ...b, limit } : b
+                  b.category === category ? { ...b, limit, currency } : b
                 ),
               }
             }
             return {
               budgets: [
-                { id: uid(), category, limit, createdAt: Date.now() },
+                { id: uid(), category, limit, currency, createdAt: Date.now() },
                 ...st.budgets,
               ],
             }
@@ -477,7 +489,7 @@ export const useStore = create<Store>()(
           if (!get().game.usedFeatures.includes('restock')) {
             set((st) => ({ game: { ...st.game, usedFeatures: [...st.game.usedFeatures, 'restock'] } }))
           }
-          // Si tiene precio, registra el gasto automáticamente
+          // Si tiene precio, registra el gasto automáticamente (en su moneda)
           if (sup && sup.price > 0) {
             set((st) => ({
               transactions: [
@@ -485,6 +497,7 @@ export const useStore = create<Store>()(
                   id: uid(),
                   type: 'gasto',
                   amount: sup.price,
+                  currency: sup.currency ?? 'COP',
                   category: 'Compras',
                   description: sup.name,
                   date: todayISO(),
@@ -540,6 +553,42 @@ export const useStore = create<Store>()(
           get().markFeatureUsed('wish-to-shopping')
           checkAchievements()
         },
+
+        addPriceItem: (item) => {
+          set((st) => ({
+            priceItems: [
+              { ...item, history: [], id: uid(), createdAt: Date.now() },
+              ...st.priceItems,
+            ],
+          }))
+          checkAchievements()
+        },
+        removePriceItem: (id) =>
+          set((st) => ({ priceItems: st.priceItems.filter((p) => p.id !== id) })),
+        addPricePoint: (itemId, point) => {
+          set((st) => ({
+            priceItems: st.priceItems.map((it) =>
+              it.id === itemId
+                ? {
+                    ...it,
+                    history: [
+                      { ...point, id: uid(), createdAt: Date.now() },
+                      ...it.history,
+                    ],
+                  }
+                : it
+            ),
+          }))
+          checkAchievements()
+        },
+        removePricePoint: (itemId, pointId) =>
+          set((st) => ({
+            priceItems: st.priceItems.map((it) =>
+              it.id === itemId
+                ? { ...it, history: it.history.filter((h) => h.id !== pointId) }
+                : it
+            ),
+          })),
 
         addLapse: (l) => {
           set((st) => ({
@@ -671,6 +720,13 @@ export const useStore = create<Store>()(
             ),
           })),
 
+        setBoardScene: (elements, files) => {
+          const had = get().boardScene?.elements?.length ?? 0
+          set(() => ({ boardScene: { elements, files } }))
+          // El primer trazo desbloquea el logro del lienzo (§6.1).
+          if (had === 0 && elements.length > 0) checkAchievements()
+        },
+
         importState: (data) =>
           set(() => ({
             transactions: data.transactions ?? [],
@@ -690,6 +746,9 @@ export const useStore = create<Store>()(
             resources: data.resources ?? [],
             quotes: data.quotes ?? [],
             boardNotes: data.boardNotes ?? [],
+            wishlist: data.wishlist ?? [],
+            priceItems: data.priceItems ?? [],
+            boardScene: data.boardScene ?? { elements: [], files: {} },
             game: data.game
               ? { ...data.game, usedFeatures: data.game.usedFeatures ?? [] }
               : { xp: 0, achievements: [], lastActiveDate: todayISO(), usedFeatures: [] },
@@ -700,7 +759,7 @@ export const useStore = create<Store>()(
     },
     {
       name: 'vida-quest-v1',
-      version: 18,
+      version: 20,
       migrate: (persisted: any, version: number) => {
         if (!persisted) return persisted
         const s = persisted
@@ -790,6 +849,21 @@ export const useStore = create<Store>()(
         if (version < 18) {
           // Nuevo módulo "Inventario": lista de deseos (wishlist).
           s.wishlist = s.wishlist ?? []
+        }
+        if (version < 19) {
+          // Multi-moneda (COP/USD): todo lo existente queda en COP por defecto.
+          s.transactions = (s.transactions ?? []).map((t: any) => ({ currency: 'COP', ...t }))
+          s.debts = (s.debts ?? []).map((d: any) => ({ currency: 'COP', ...d }))
+          s.budgets = (s.budgets ?? []).map((b: any) => ({ currency: 'COP', ...b }))
+          s.goals = (s.goals ?? []).map((g: any) => ({ currency: 'COP', ...g }))
+          s.supplies = (s.supplies ?? []).map((x: any) => ({ currency: 'COP', ...x }))
+          s.wishlist = (s.wishlist ?? []).map((w: any) => ({ currency: 'COP', ...w }))
+          // Tablero reworkeado a Excalidraw: nueva escena vacía.
+          s.boardScene = s.boardScene ?? { elements: [], files: {} }
+        }
+        if (version < 20) {
+          // Nueva pestaña "Precios": seguimiento de precios de compras recurrentes.
+          s.priceItems = s.priceItems ?? []
         }
         return s
       },

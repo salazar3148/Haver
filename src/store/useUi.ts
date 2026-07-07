@@ -9,6 +9,8 @@ interface UiState {
   breakMin: number // duración de descanso preferida
   boardTheme: 'light' | 'dark' // tema del Tablero: día (blanco) / noche (negro)
   sidebarCollapsed: boolean // barra lateral deslizable/colapsada (solo íconos)
+  usdRate: number // tasa de cambio del día: cuántos COP vale 1 USD
+  setUsdRate: (n: number) => void
   setTheme: (id: string) => void
   setAccent: (color: string | null) => void
   toggleEffects: () => void
@@ -28,6 +30,8 @@ export const useUi = create<UiState>()(
       breakMin: 5,
       boardTheme: 'light',
       sidebarCollapsed: false,
+      usdRate: 4000,
+      setUsdRate: (n) => set({ usdRate: n > 0 ? n : 1 }),
       setTheme: (id) => set({ themeId: id }),
       setAccent: (color) => set({ accent: color }),
       toggleEffects: () => set((s) => ({ effects: !s.effects })),
@@ -38,7 +42,7 @@ export const useUi = create<UiState>()(
     }),
     {
       name: 'vida-quest-ui',
-      version: 3,
+      version: 4,
       migrate: (persisted: any, version: number) => {
         if (version < 1 && persisted) {
           persisted = { ...persisted, themeId: 'cueva', accent: null }
@@ -48,6 +52,9 @@ export const useUi = create<UiState>()(
         }
         if (version < 3 && persisted) {
           persisted = { sidebarCollapsed: false, ...persisted }
+        }
+        if (version < 4 && persisted) {
+          persisted = { usdRate: 4000, ...persisted }
         }
         return persisted
       },

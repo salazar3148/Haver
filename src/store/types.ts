@@ -2,10 +2,15 @@
 
 export type TxType = 'ingreso' | 'gasto'
 
+// Moneda de un monto. Todo se puede registrar en COP o en dólares (USD).
+// Internamente los cálculos se normalizan a COP usando la tasa del día (useUi.usdRate).
+export type Currency = 'COP' | 'USD'
+
 export interface Transaction {
   id: string
   type: TxType
   amount: number
+  currency: Currency // COP o USD (permite decimales)
   category: string
   description: string
   date: string // ISO yyyy-mm-dd
@@ -18,6 +23,7 @@ export interface Debt {
   creditor: string
   total: number
   paid: number
+  currency: Currency
   dueDate: string // ISO
   createdAt: number
 }
@@ -27,6 +33,7 @@ export interface Budget {
   id: string
   category: string
   limit: number // límite mensual
+  currency: Currency
   createdAt: number
 }
 
@@ -55,6 +62,26 @@ export interface ShoppingItem {
   createdAt: number
 }
 
+// Un registro de precio (histórico) de algo que compras recurrentemente.
+export interface PricePoint {
+  id: string
+  price: number
+  currency: Currency
+  store: string // dónde lo viste/compraste (opcional)
+  date: string // ISO
+  createdAt: number
+}
+
+// Artículo cuyo precio sigues en el tiempo para comprar cuando esté barato.
+export interface PriceItem {
+  id: string
+  name: string
+  emoji: string
+  unit: string // cantidad de referencia (ej. "1 kg", "500 ml") opcional
+  history: PricePoint[]
+  createdAt: number
+}
+
 // Nivel de deseo de un artículo de la wishlist
 export type WishPriority = 'baja' | 'media' | 'alta'
 
@@ -65,6 +92,7 @@ export interface WishItem {
   name: string
   emoji: string
   price: number
+  currency: Currency
   note: string
   priority: WishPriority
   createdAt: number
@@ -86,6 +114,7 @@ export interface Goal {
   current: number
   unit: string
   money: boolean // meta de ahorro/compra (se mide en dinero)
+  currency: Currency // moneda de la meta financiera (COP/USD); irrelevante si money=false
   deadline: string // ISO (metas únicas)
   completions: string[] // periodos cumplidos (diaria: fecha ISO; semanal: lunes ISO)
   createdAt: number
@@ -100,6 +129,7 @@ export interface Supply {
   lastBought: string // ISO, última vez que lo compraste
   durationDays: number // cuánto te dura
   price: number // precio aprox (0 = sin registrar gasto)
+  currency: Currency
   createdAt: number
 }
 
@@ -153,6 +183,14 @@ export interface BoardNote {
   showLabel?: boolean // frame: mostrar el título (opcional). undefined = true
   title?: string // frame: título opcional (el cuerpo va en `text`)
   createdAt: number
+}
+
+// ===== Tablero (lienzo estilo Excalidraw) =====
+// Escena del pizarrón: elementos y archivos (imágenes) que dibuja Excalidraw.
+// Se guardan tal cual los entrega Excalidraw para poder restaurarlos.
+export interface BoardScene {
+  elements: any[]
+  files: Record<string, any>
 }
 
 export interface GameState {
@@ -265,6 +303,8 @@ export interface AppState {
   supplies: Supply[]
   shopping: ShoppingItem[]
   wishlist: WishItem[] // lista de deseos (cosas por comprar más adelante, con precio)
+  priceItems: PriceItem[] // seguimiento de precios de compras recurrentes
+  boardScene: BoardScene // lienzo del Tablero (Excalidraw): elementos + imágenes
   events: CalendarEvent[]
   campaigns: Campaign[]
   frozenDays: string[] // días congelados (viaje/ausencia): no penalizan

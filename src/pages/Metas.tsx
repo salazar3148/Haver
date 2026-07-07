@@ -14,8 +14,10 @@ import {
 } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { Modal, Empty } from '../components/ui'
+import { CurrencyToggle } from '../components/Money'
 import { XpWidget } from '../App'
-import { currency } from '../utils/format'
+import { useUi } from '../store/useUi'
+import { money, copHint } from '../utils/format'
 import { todayISO, daysUntil, currentWeek, dayLabelShort } from '../utils/date'
 import {
   childrenOf,
@@ -28,7 +30,7 @@ import {
   doneCurrentPeriod,
   descendantIds,
 } from '../store/goals'
-import type { GoalType, GoalCadence, Goal } from '../store/types'
+import type { GoalType, GoalCadence, Goal, Currency } from '../store/types'
 
 const TYPE_META: Record<
   GoalType,
@@ -75,11 +77,13 @@ function Ring({ value, size = 62, color }: { value: number; size?: number; color
 
 export function Metas() {
   const { goals, addGoal, updateGoalProgress, toggleGoalPeriod, removeGoal } = useStore()
+  const usdRate = useUi((s) => s.usdRate)
   const [modal, setModal] = useState(false)
   const [parentId, setParentId] = useState<string | undefined>(undefined)
   const [title, setTitle] = useState('')
   const [type, setType] = useState<GoalType>('estudio')
   const [kind, setKind] = useState<'meta' | 'financiera'>('meta')
+  const [moneyCur, setMoneyCur] = useState<Currency>('COP')
   const [cadence, setCadence] = useState<GoalCadence>('unica')
   const [target, setTarget] = useState('')
   const [unit, setUnit] = useState('')
@@ -96,6 +100,7 @@ export function Metas() {
     setTarget('')
     setUnit('')
     setKind('meta')
+    setMoneyCur('COP')
     setCadence('unica')
     setType('estudio')
     setStartDate(todayISO())
@@ -121,6 +126,7 @@ export function Metas() {
       target: t,
       unit: isMoney ? '$' : unit.trim() || (effCadence === 'unica' ? 'u' : 'veces'),
       money: isMoney,
+      currency: isMoney ? moneyCur : 'COP',
       startDate,
       deadline,
     })
@@ -194,7 +200,7 @@ export function Metas() {
                     </span>
                   )}
                   {g.money && !isParent && !done && (
-                    <span className="chip green">faltan {currency(Math.max(0, g.target - g.current))}</span>
+                    <span className="chip green">faltan {money(Math.max(0, g.target - g.current), g.currency)}</span>
                   )}
                   {isParent && (
                     <span className="chip" style={{ display: 'inline-flex', gap: 4 }}>
@@ -227,7 +233,7 @@ export function Metas() {
                       ? `${kids.filter((k) => isGoalDone(goals, k)).length}/${kids.length} sub-metas`
                       : g.cadence === 'unica'
                       ? g.money
-                        ? `${currency(g.current)} / ${currency(g.target)}`
+                        ? `${money(g.current, g.currency)} / ${money(g.target, g.currency)}${g.currency === 'USD' ? ` · ${copHint(g.target, g.currency, usdRate)}` : ''}`
                         : `${g.current}/${g.target} ${g.unit}`
                       : `${completedPeriods(g)}/${expectedPeriods(g)} ${g.cadence === 'diaria' ? 'días' : 'semanas'}`}
                   </span>
@@ -247,7 +253,7 @@ export function Metas() {
                 {isParent
                   ? `${kids.filter((k) => isGoalDone(goals, k)).length}/${kids.length} ramas conquistadas · escala hasta la cima`
                   : g.money
-                  ? `${currency(g.current)} / ${currency(g.target)}`
+                  ? `${money(g.current, g.currency)} / ${money(g.target, g.currency)}${g.currency === 'USD' ? ` · ${copHint(g.target, g.currency, usdRate)}` : ''}`
                   : g.cadence === 'unica'
                   ? `${g.current}/${g.target} ${g.unit}`
                   : `${completedPeriods(g)}/${expectedPeriods(g)} ${g.cadence === 'diaria' ? 'días' : 'semanas'}`}
@@ -260,10 +266,11 @@ export function Metas() {
                 <input
                   className="input"
                   type="number"
-                  placeholder={g.money ? 'Aporte $' : `+${stepVal}`}
+                  step={g.money && g.currency === 'USD' ? '0.01' : '1'}
+                  placeholder={g.money ? (g.currency === 'USD' ? 'Aporte US$' : 'Aporte $') : `+${stepVal}`}
                   value={step[g.id] ?? ''}
                   onChange={(e) => setStep((s) => ({ ...s, [g.id]: e.target.value }))}
-                  style={{ maxWidth: g.money ? 130 : 90, padding: '8px 10px' }}
+                  style={{ maxWidth: g.money ? 140 : 90, padding: '8px 10px' }}
                 />
                 <button className="btn btn-sm" onClick={() => updateGoalProgress(g.id, -stepVal)}>
                   <Minus size={14} />
@@ -438,6 +445,13 @@ export function Metas() {
           </div>
         )}
 
+        {isMoney && (
+          <div className="field">
+            <label>Moneda</label>
+            <CurrencyToggle value={moneyCur} onChange={setMoneyCur} />
+          </div>
+        )}
+
         {(isMoney || cadence === 'unica') && (
           <div className="row">
             <div className="field">
@@ -445,9 +459,10 @@ export function Metas() {
               <input
                 className="input"
                 type="number"
+                step={isMoney && moneyCur === 'USD' ? '0.01' : '1'}
                 value={target}
                 onChange={(e) => setTarget(e.target.value)}
-                placeholder={isMoney ? 'Ej. 600000' : 'Ej. 30'}
+                placeholder={isMoney ? (moneyCur === 'USD' ? 'Ej. 150' : 'Ej. 600000') : 'Ej. 30'}
               />
             </div>
             {!isMoney && (
