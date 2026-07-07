@@ -907,11 +907,6 @@ h3 {
   font-weight: 700;
   font-size: 15px;
 }
-.habit-freq {
-  font-size: 12px;
-  color: var(--muted);
-  margin-top: 2px;
-}
 .week-dots {
   display: flex;
   gap: 8px;
@@ -1002,11 +997,6 @@ h3 {
   font-size: 12px;
   font-family: 'Sora', sans-serif;
 }
-.day-btn .day-num {
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--faint);
-}
 .day-btn:hover {
   border-color: var(--border-strong);
   color: var(--text);
@@ -1018,9 +1008,6 @@ h3 {
 }
 .day-btn.active .day-ico {
   filter: none;
-}
-.day-btn.active .day-num {
-  color: var(--muted);
 }
 .day-state {
   position: static;

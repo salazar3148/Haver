@@ -479,8 +479,6 @@ function HabitCard({
   const yesterday = addDays(today, -1)
   const targetDate = markDay === 'hoy' ? today : yesterday
 
-  const doneThisWeek = week.filter((d) => dayFraction(h, d) > 0).length
-  const goal = h.frequency === 'semanal' ? h.targetPerWeek : 7
   const hasSubs = h.subs.length > 0
   const targetFull = isDayFull(h, targetDate)
   const targetFrozen = frozenDays.includes(targetDate)
@@ -502,7 +500,6 @@ function HabitCard({
       <button className={`day-btn ${markDay === mode ? 'active' : ''}`} onClick={() => setMarkDay(mode)}>
         <span className="day-ico">{ico}</span>
         <span className="day-txt">{label}</span>
-        <span className="day-num">{dayOfMonth(iso)}</span>
         {st.txt && <span className={`day-state ${st.cls}`}>{st.txt}</span>}
       </button>
     )
@@ -516,9 +513,6 @@ function HabitCard({
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="habit-name">{h.name}</div>
-          <div className="habit-freq">
-            {h.frequency} · {doneThisWeek}/{goal} esta semana
-          </div>
         </div>
         <button className="icon-btn" title="Editar hábito" onClick={() => onEdit(h)}>
           <Pencil size={14} />
@@ -554,8 +548,8 @@ function HabitCard({
       {/* Marcado: se elige HOY (☀️) o AYER (🌙), exclusivamente esos 2 días */}
       <div className="habit-mark" style={{ ['--hc' as string]: h.color }}>
         <div className="day-switch">
-          {dayBtn('hoy', today, '☀️', 'Hoy')}
           {dayBtn('ayer', yesterday, '🌙', 'Ayer')}
+          {dayBtn('hoy', today, '☀️', 'Hoy')}
         </div>
 
         {targetFrozen ? (
