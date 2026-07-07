@@ -366,15 +366,22 @@ datos (sección 12).
     checklist con brillo). Un solo color por nota (`--paper`) genera ambos looks. El selector de
     color (paleta al pasar el cursor) tiene dos grupos: **"Tema"** (swatches leídos en vivo de las
     CSS vars `--primary/--secondary/--cyan` para que la nota combine con el tema activo) y
-    **"Colores"** (`NOTE_COLORS`, tonos que se ven pastel de día y neón de noche). `getThemeColors()`
-    en Tablero.tsx lee las vars con `getComputedStyle`.
+    **"Colores"** (`NOTE_COLORS`, hues vivos). En modo DÍA tanto los swatches como el fondo de la
+    nota se muestran/aplican en **pastel suave** (color-mix con blanco) para contrastar con el
+    fondo blanco; en modo NOCHE el mismo color se usa como neón. `getThemeColors()` en Tablero.tsx
+    lee las vars con `getComputedStyle`.
   - Cada nota tiene color de papel y de chincheta aleatorios (editables), rotación leve y
     **posición libre en coordenadas del lienzo**. Se **arrastran**
     (pointer events; el delta de pantalla se divide por `zoom`; se clampa al lienzo; `moveNote`
     solo al soltar; `bringNoteToFront` al tomarla). `startDrag` hace `stopPropagation` para no
-    disparar el paneo. Doble clic sobre una nota → editar texto inline; **doble clic sobre el
-    lienzo vacío** → crea una nota adhesiva ahí y la deja lista para escribir (`addNote` devuelve
-    el id → `autoEditId` → `NoteCard` inicia en modo edición). Fuente de las notas: **Lora**
+    disparar el paneo. **Interacción por clic simple**: `startDrag` distingue clic vs arrastre por
+    umbral de movimiento (>4px); un **clic simple** (sin mover) sobre un elemento entra en edición
+    (`handleClick`: sticker/foto abren el picker de emoji; el resto edita texto), evitando el doble
+    clic. Ya **no** se crean notas con doble clic en el lienzo (se quitó porque el interior del
+    cuadro es `pointer-events:none` y disparaba notas fantasma). **Selección + borrado**: clic
+    selecciona (`selectedId`, borde punteado `.note.selected`); **Supr/Backspace** borra el
+    elemento seleccionado si no estás escribiendo (handler global en la página); **Escape** sale de
+    la edición. Crear Nota/Texto entra directo en edición (`autoEditId`). Fuente de las notas: **Lora**
     (serif elegante, formal) en index.html. En modo noche el glow es intencionalmente MUY tenue
     (casi imperceptible) para no distraer. Estado en `boardNotes` (persist v15). CSS: sección
     "TABLERO" al final de index.css; respeta `[data-reduce]`.

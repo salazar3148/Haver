@@ -2433,7 +2433,7 @@ h3 {
 /* ---- Sticky (post-it) ---- */
 .note-sticky {
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--paper) 55%, #fff) 0%, color-mix(in srgb, var(--paper) 74%, #fff) 100%);
+    linear-gradient(180deg, color-mix(in srgb, var(--paper) 26%, #fff) 0%, color-mix(in srgb, var(--paper) 40%, #fff) 100%);
   border-radius: 2px;
   box-shadow:
     0 1px 1px rgba(0, 0, 0, 0.15),
@@ -2456,10 +2456,10 @@ h3 {
 
 /* ---- Papel (con líneas) fijado con chincheta ---- */
 .note-paper {
-  background-color: color-mix(in srgb, var(--paper) 55%, #fff);
+  background-color: color-mix(in srgb, var(--paper) 22%, #fff);
   background-image: repeating-linear-gradient(
-    color-mix(in srgb, var(--paper) 55%, #fff) 0 26px,
-    color-mix(in srgb, var(--paper) 40%, #6b93c9) 26px 27px
+    color-mix(in srgb, var(--paper) 22%, #fff) 0 26px,
+    color-mix(in srgb, var(--paper) 32%, #7ba0d8) 26px 27px
   );
   border-radius: 3px;
   box-shadow:
@@ -2735,6 +2735,12 @@ h3 {
   border: 1.5px solid rgba(255, 255, 255, 0.35);
   cursor: pointer;
   transition: transform 0.12s;
+  background: var(--sw);
+}
+/* En modo día los colores seleccionables se muestran (y aplican) en pastel
+   suave, para contrastar bien con el fondo blanco. */
+.board-viewport[data-board='light'] .note-colors .swatch:not(.theme) {
+  background: color-mix(in srgb, var(--sw) 34%, #fff);
 }
 .note-colors .swatch:hover {
   transform: scale(1.14);
@@ -3040,4 +3046,10 @@ h3 {
 }
 .note-emojis button:hover {
   background: rgba(255, 255, 255, 0.14);
+}
+
+/* Elemento seleccionado en el tablero (para poder borrarlo con Supr) */
+.note.selected {
+  outline: 2px dashed var(--primary);
+  outline-offset: 4px;
 }

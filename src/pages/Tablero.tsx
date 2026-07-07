@@ -84,6 +84,7 @@ export function Tablero() {
   const viewportRef = useRef<HTMLDivElement>(null)
   const [view, setView] = useState<View>({ x: 40, y: 40, zoom: 1 })
   const [autoEditId, setAutoEditId] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
 
   // Punteros activos (para gestos táctiles: 1 dedo = paneo, 2 dedos = pinch-zoom)
   const pointers = useRef<Map<number, { x: number; y: number }>>(new Map())
@@ -105,22 +106,29 @@ export function Tablero() {
   const create = (kind: NoteKind) => {
     const { x, y } = centerCanvas()
     const id = addNote(kind, x, y)
+    setSelectedId(id)
     if (kind === 'sticky' || kind === 'text') setAutoEditId(id)
   }
 
-  // Doble clic sobre el lienzo vacío: crea una nota adhesiva ahí, lista para escribir.
-  const onBoardDoubleClick = (e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest('.note, .board-controls, .board-empty')) return
-    const rect = viewportRef.current?.getBoundingClientRect()
-    if (!rect) return
-    const x = Math.max(0, Math.min(CANVAS_W - 200, Math.round((e.clientX - rect.left - view.x) / view.zoom - 90)))
-    const y = Math.max(0, Math.min(CANVAS_H - 160, Math.round((e.clientY - rect.top - view.y) / view.zoom - 60)))
-    setAutoEditId(addNote('sticky', x, y))
-  }
+  // Tecla Suprimir/Delete: elimina el elemento seleccionado (si no estás escribiendo).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Delete' && e.key !== 'Backspace') return
+      const ae = document.activeElement as HTMLElement | null
+      if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return
+      if (selectedId) {
+        removeNote(selectedId)
+        setSelectedId(null)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [selectedId, removeNote])
 
   // ---- Paneo con 1 puntero / pinch con 2 ----
   const onPointerDown = (e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest('.note')) return
+    setSelectedId(null)
     const vp = viewportRef.current
     if (!vp) return
     vp.setPointerCapture(e.pointerId)
@@ -240,7 +248,6 @@ export function Tablero() {
         onPointerMove={onPointerMove}
         onPointerUp={endPointer}
         onPointerCancel={endPointer}
-        onDoubleClick={onBoardDoubleClick}
       >
         <div
           className="board-canvas"
@@ -256,6 +263,8 @@ export function Tablero() {
               note={n}
               zoom={view.zoom}
               autoEdit={n.id === autoEditId}
+              selected={n.id === selectedId}
+              onSelect={setSelectedId}
               onMove={moveNote}
               onFront={bringNoteToFront}
               onUpdate={updateNote}
@@ -271,8 +280,7 @@ export function Tablero() {
           <div className="board-empty">
             <div className="board-empty-emoji">🧲</div>
             <div className="board-empty-text">
-              Tu tablero está vacío. Crea algo con los botones de arriba, o haz doble clic aquí
-              para una nota rápida.
+              Tu tablero está vacío. Crea algo con los botones de arriba.
             </div>
           </div>
         )}
@@ -300,6 +308,8 @@ function NoteCard({
   note,
   zoom,
   autoEdit,
+  selected,
+  onSelect,
   onMove,
   onFront,
   onUpdate,
@@ -311,6 +321,8 @@ function NoteCard({
   note: BoardNote
   zoom: number
   autoEdit?: boolean
+  selected?: boolean
+  onSelect: (id: string) => void
   onMove: (id: string, x: number, y: number) => void
   onFront: (id: string) => void
   onUpdate: (id: string, patch: Partial<BoardNote>) => void
@@ -340,6 +352,8 @@ function NoteCard({
       return
     e.preventDefault()
     onFront(note.id)
+    onSelect(note.id)
+    const downTarget = e.target as HTMLElement
     const el = ref.current
     if (!el) return
     const nw = el.offsetWidth
@@ -350,9 +364,14 @@ function NoteCard({
     const origY = note.y
     let nx = origX
     let ny = origY
+    let moved = false
     el.setPointerCapture(e.pointerId)
-    setDragging(true)
     const move = (ev: PointerEvent) => {
+      if (!moved && Math.hypot(ev.clientX - startX, ev.clientY - startY) > 4) {
+        moved = true
+        setDragging(true)
+      }
+      if (!moved) return
       nx = Math.max(0, Math.min(CANVAS_W - nw, origX + (ev.clientX - startX) / zoom))
       ny = Math.max(0, Math.min(CANVAS_H - nh, origY + (ev.clientY - startY) / zoom))
       el.style.left = `${nx}px`
@@ -361,11 +380,28 @@ function NoteCard({
     const up = () => {
       window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', up)
-      setDragging(false)
-      onMove(note.id, nx, ny)
+      if (moved) {
+        setDragging(false)
+        onMove(note.id, nx, ny)
+      } else {
+        handleClick(downTarget)
+      }
     }
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', up)
+  }
+
+  // Un clic simple (sin arrastrar) permite escribir/editar directamente el elemento,
+  // sin necesidad de doble clic.
+  const handleClick = (target: HTMLElement) => {
+    if (note.kind === 'sticker') {
+      setShowEmojis((v) => !v)
+    } else if (note.kind === 'photo') {
+      if (target.closest('.photo-pic')) setShowEmojis(true)
+      else setEditing(true)
+    } else if (note.kind !== 'todo') {
+      setEditing(true)
+    }
   }
 
   // Redimensionar (cuadro: ancho+alto / sticker: tamaño de fuente)
@@ -408,6 +444,12 @@ function NoteCard({
     if (draft !== note.text) onUpdate(note.id, { text: draft })
   }
 
+  // Escape sale de la edición (sin borrar), dejando el elemento seleccionado
+  // para poder eliminarlo con Supr si se desea.
+  const onEditKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') (e.target as HTMLElement).blur()
+  }
+
   const placeholder =
     note.kind === 'photo' ? 'Escribe un pie…' : note.kind === 'frame' ? 'Etiqueta…' : 'Escribe aquí…'
 
@@ -435,10 +477,9 @@ function NoteCard({
   return (
     <div
       ref={ref}
-      className={`note note-${note.kind}${dragging ? ' dragging' : ''}`}
+      className={`note note-${note.kind}${dragging ? ' dragging' : ''}${selected ? ' selected' : ''}`}
       style={style}
       onPointerDown={startDrag}
-      onDoubleClick={() => note.kind !== 'todo' && note.kind !== 'sticker' && setEditing(true)}
     >
       {showPin && <span className="pin" />}
 
@@ -485,7 +526,7 @@ function NoteCard({
               <button
                 key={c}
                 className="swatch"
-                style={{ background: c }}
+                style={{ ['--sw' as string]: c } as React.CSSProperties}
                 onClick={() => {
                   onUpdate(note.id, { color: c })
                   setShowColors(false)
@@ -532,16 +573,17 @@ function NoteCard({
             placeholder="Escribe…"
             onChange={(e) => setDraft(e.target.value)}
             onBlur={commitText}
+            onKeyDown={onEditKeyDown}
           />
         ) : (
-          <div className="text-view" onDoubleClick={() => setEditing(true)}>
-            {note.text || <span className="ph">Doble clic para escribir…</span>}
+          <div className="text-view">
+            {note.text || <span className="ph">Clic para escribir…</span>}
           </div>
         )
 
       case 'frame':
         return (
-          <div className="frame-bar" onDoubleClick={() => setEditing(true)} title="Arrastra para mover el cuadro">
+          <div className="frame-bar" title="Arrastra para mover · clic para renombrar">
             {editing ? (
               <input
                 className="note-input frame-label"
@@ -550,7 +592,10 @@ function NoteCard({
                 placeholder={placeholder}
                 onChange={(e) => setDraft(e.target.value)}
                 onBlur={commitText}
-                onKeyDown={(e) => e.key === 'Enter' && commitText()}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') commitText()
+                  else onEditKeyDown(e)
+                }}
               />
             ) : (
               <span className="frame-label-view">{note.text || 'Cuadro'}</span>
@@ -561,14 +606,7 @@ function NoteCard({
       case 'photo':
         return (
           <>
-            <div
-              className="photo-pic"
-              onDoubleClick={(e) => {
-                e.stopPropagation()
-                setShowEmojis(true)
-              }}
-              title="Doble clic: cambiar imagen"
-            >
+            <div className="photo-pic" title="Clic: cambiar imagen">
               <span>{note.emoji || '📸'}</span>
             </div>
             {editing ? (
@@ -579,10 +617,11 @@ function NoteCard({
                 placeholder={placeholder}
                 onChange={(e) => setDraft(e.target.value)}
                 onBlur={commitText}
+                onKeyDown={onEditKeyDown}
               />
             ) : (
-              <div className="photo-cap-view" onDoubleClick={() => setEditing(true)}>
-                {note.text || <span className="ph">Doble clic para el pie…</span>}
+              <div className="photo-cap-view">
+                {note.text || <span className="ph">Clic para el pie…</span>}
               </div>
             )}
           </>
@@ -643,10 +682,11 @@ function NoteCard({
             placeholder={placeholder}
             onChange={(e) => setDraft(e.target.value)}
             onBlur={commitText}
+            onKeyDown={onEditKeyDown}
           />
         ) : (
-          <div className="note-text" onDoubleClick={() => setEditing(true)}>
-            {note.text || <span className="ph">Doble clic para escribir…</span>}
+          <div className="note-text">
+            {note.text || <span className="ph">Clic para escribir…</span>}
           </div>
         )
     }
