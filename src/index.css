@@ -2350,17 +2350,27 @@ h3 {
   gap: 2px;
   padding: 4px;
   border-radius: 12px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow);
   z-index: 10;
+  user-select: none;
+}
+.board-viewport[data-board='light'] .board-controls {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  color: #1f2430;
+  box-shadow: 0 6px 18px -6px rgba(0, 0, 0, 0.25);
+}
+.board-viewport[data-board='dark'] .board-controls {
+  background: #171a21;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #eef2ff;
+  box-shadow: 0 6px 18px -6px rgba(0, 0, 0, 0.6);
 }
 .board-controls button {
   min-width: 34px;
   height: 34px;
   border: none;
   background: transparent;
-  color: var(--text);
+  color: inherit;
   border-radius: 8px;
   cursor: pointer;
   display: grid;
@@ -2369,8 +2379,11 @@ h3 {
   font-size: 12px;
   padding: 0 6px;
 }
-.board-controls button:hover {
-  background: var(--panel-hover);
+.board-viewport[data-board='light'] .board-controls button:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+.board-viewport[data-board='dark'] .board-controls button:hover {
+  background: rgba(255, 255, 255, 0.09);
 }
 .board-controls .zoom-label {
   min-width: 48px;
@@ -2558,6 +2571,16 @@ h3 {
 }
 .chk-row:hover .chk-x {
   opacity: 0.8;
+}
+.chk-hint {
+  font-family: 'Inter', sans-serif;
+  font-size: 11.5px;
+  font-style: italic;
+  color: rgba(0, 0, 0, 0.3);
+  padding: 2px 2px 4px;
+}
+.board-viewport[data-board='dark'] .chk-hint {
+  color: rgba(255, 255, 255, 0.35);
 }
 .chk-add {
   display: flex;
@@ -2907,9 +2930,8 @@ h3 {
 }
 
 /* ---- Cuadro / marco redimensionable ---- */
-/* El cuadro NO captura eventos en su interior (para poder agrupar notas por
-   encima/detrás); solo su pestaña, la barra de acciones y el asa son
-   interactivas. */
+/* El cuadro se crea DETRÁS de las notas (z bajo) para agrupar sin taparlas.
+   Se arrastra desde cualquier parte y se renombra con un clic. */
 .note-frame {
   min-height: 0;
   padding: 0;
@@ -2917,15 +2939,8 @@ h3 {
   border: 2px solid color-mix(in srgb, var(--paper) 75%, transparent);
   background: color-mix(in srgb, var(--paper) 9%, transparent);
   box-shadow: 0 8px 22px -14px rgba(0, 0, 0, 0.5);
-  pointer-events: none;
 }
-.note-frame .frame-bar,
-.note-frame .note-ui,
-.note-frame .note-colors,
-.note-frame .resize-handle {
-  pointer-events: auto;
-}
-/* Barra/pestaña superior: el asa para mover el cuadro */
+/* Barra/pestaña superior: muestra la etiqueta del cuadro */
 .frame-bar {
   position: absolute;
   top: -13px;
@@ -2951,6 +2966,9 @@ h3 {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.frame-label-view {
+  user-select: none;
+}
 .board-viewport[data-board='light'] .frame-bar {
   color: #2a2f3a;
 }
@@ -2963,12 +2981,7 @@ h3 {
   width: 120px;
   padding: 0;
   color: inherit;
-}
-/* Cuadro: controles siempre visibles (su cuerpo no dispara hover) */
-.note-frame .note-ui,
-.note-frame .resize-handle {
-  opacity: 1;
-  transform: none;
+  user-select: text;
 }
 
 /* ---- Sticker / emoji decorativo ---- */

@@ -351,11 +351,13 @@ datos (sección 12).
   - **7 tipos de nota** (`BoardNote.kind`): **sticky** (post-it, esquina doblada), **paper**
     (papel de cuaderno con líneas y margen rojo + chincheta), **todo** (**checklist** SIN título:
     solo ítems con palomita ✓ que se agregan/tachan/borran — acciones `addNoteItem/toggleNoteItem/
-    removeNoteItem`), **photo** (polaroid: "imagen" = emoji elegido de un picker + pie), **text**
+    removeNoteItem`; la fila "Agregar ítem" solo aparece cuando la nota está **seleccionada**, si
+    no muestra una pista `.chk-hint`), **photo** (polaroid: "imagen" = emoji elegido de un picker + pie), **text**
     (solo texto sobre el lienzo, sin tarjeta; color/tamaño legible según día/noche), **frame**
-    (**cuadro redimensionable** a lo ancho y alto para agrupar/decorar: su interior es
-    "atravesable" `pointer-events:none` para no bloquear las notas de detrás, se mueve desde una
-    pestaña superior `.frame-bar` y se redimensiona con el asa `.resize-handle`) y **sticker**
+    (**cuadro redimensionable** a lo ancho y alto para agrupar/decorar: se crea con **z bajo**
+    (`minZ-1`) para quedar DETRÁS de las notas sin taparlas y **no salta al frente** al arrastrarlo;
+    se mueve desde cualquier parte, se renombra con un clic (etiqueta en `.frame-bar`) y se
+    redimensiona con el asa `.resize-handle`) y **sticker**
     (emoji decorativo escalable con el asa; emoji elegido de un picker `.note-emojis`).
   - `BoardNote.w/h` (opcionales) guardan el tamaño del cuadro (w+h) o el tamaño de fuente del
     sticker (w). El **asa de redimensionado** aparece en cuadro y sticker (`canResize`). Crear

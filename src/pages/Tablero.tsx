@@ -351,7 +351,7 @@ function NoteCard({
     )
       return
     e.preventDefault()
-    onFront(note.id)
+    if (note.kind !== 'frame') onFront(note.id) // el cuadro se queda detrás
     onSelect(note.id)
     const downTarget = e.target as HTMLElement
     const el = ref.current
@@ -646,29 +646,37 @@ function NoteCard({
                 </div>
               ))}
             </div>
-            <div className="chk-add">
-              <input
-                value={newItem}
-                placeholder="Agregar ítem…"
-                onChange={(e) => setNewItem(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && newItem.trim()) {
-                    onAddItem(note.id, newItem)
-                    setNewItem('')
-                  }
-                }}
-              />
-              <button
-                onClick={() => {
-                  if (newItem.trim()) {
-                    onAddItem(note.id, newItem)
-                    setNewItem('')
-                  }
-                }}
-              >
-                <Plus size={13} />
-              </button>
-            </div>
+            {note.items.length === 0 && !selected && (
+              <div className="chk-hint">Lista vacía · clic para agregar</div>
+            )}
+            {selected && (
+              <div className="chk-add">
+                <input
+                  value={newItem}
+                  placeholder="Agregar ítem…"
+                  autoFocus={note.items.length === 0}
+                  onChange={(e) => setNewItem(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && newItem.trim()) {
+                      onAddItem(note.id, newItem)
+                      setNewItem('')
+                    } else if (e.key === 'Escape') {
+                      ;(e.target as HTMLElement).blur()
+                    }
+                  }}
+                />
+                <button
+                  onClick={() => {
+                    if (newItem.trim()) {
+                      onAddItem(note.id, newItem)
+                      setNewItem('')
+                    }
+                  }}
+                >
+                  <Plus size={13} />
+                </button>
+              </div>
+            )}
           </div>
         )
 

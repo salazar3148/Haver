@@ -556,7 +556,9 @@ export const useStore = create<Store>()(
           set((st) => ({ quotes: st.quotes.filter((q) => q.id !== id) })),
 
         addNote: (kind, x, y) => {
-          const maxZ = get().boardNotes.reduce((m, n) => Math.max(m, n.z), 0)
+          const zs = get().boardNotes.map((n) => n.z)
+          const maxZ = zs.length ? Math.max(...zs) : 0
+          const minZ = zs.length ? Math.min(...zs) : 0
           // Cuadros y texto se ven mejor sin rotación; el resto lleva un ángulo leve
           const noRot = kind === 'frame' || kind === 'text'
           const note: BoardNote = {
@@ -570,7 +572,8 @@ export const useStore = create<Store>()(
             x,
             y,
             rot: noRot ? 0 : Math.round((Math.random() - 0.5) * 8), // -4..+4 grados
-            z: maxZ + 1,
+            // El cuadro va detrás (agrupa sin tapar); el resto, al frente
+            z: kind === 'frame' ? minZ - 1 : maxZ + 1,
             w: kind === 'frame' ? 300 : kind === 'sticker' ? 76 : undefined,
             h: kind === 'frame' ? 200 : undefined,
             createdAt: Date.now(),
