@@ -63,9 +63,13 @@ function useSpotlight(enabled: boolean) {
   useEffect(() => {
     if (!enabled) return
     let raf = 0
+    const root = document.documentElement
     const onMove = (e: MouseEvent) => {
       cancelAnimationFrame(raf)
       raf = requestAnimationFrame(() => {
+        // Posición global del cursor (%), usada por el halo morado del tema Abismo
+        root.style.setProperty('--gx', `${(e.clientX / window.innerWidth) * 100}%`)
+        root.style.setProperty('--gy', `${(e.clientY / window.innerHeight) * 100}%`)
         const el = (e.target as HTMLElement)?.closest('.card') as HTMLElement | null
         if (!el) return
         const r = el.getBoundingClientRect()

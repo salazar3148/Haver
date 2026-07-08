@@ -419,18 +419,29 @@ el tema; el "primary" sí.)
 `--bg-glow-1/2` alimentan la aurora. `[data-mode]` y `[data-theme]` en `<html>`.
 
 ### Temas (themes.ts) — `applyTheme(theme, accent?)` escribe los tokens
-Lista `THEMES` (en orden, el primero es default): 
+Lista `THEMES` (en orden, el primero es default). **Se depuró la lista: quedan solo
+5 temas** (se eliminaron cosmos, sunset, emerald y gold a pedido del usuario). Si un
+usuario tenía seleccionado un tema eliminado, el fallback `?? THEMES[0]` (en
+`main.tsx` y `App.tsx`) lo devuelve a **cueva** sin romper nada.
 1. **cueva** 🕳️ (DEFAULT, modo dark): primary `#f5291f` (rojo lava), secondary `#7a0f0f`,
    bg `#08080a`, bg2 `#131315`, text `#eae7e8`, muted `#9c9398`, borderStrong rojo `rgba(245,41,31,.45)`,
    glows rojos. Ambiente extra en CSS: viñeta tipo túnel (`body::after`), brasa roja
    inferior, **textura de roca** (`body::before` con SVG feTurbulence, opacity .12),
    halo rojo en `.brand-logo` (que ahora envuelve el `<img src="/haver.svg">`).
-2. cosmos 🌌 (violeta `#8b5cf6` + cian `#22d3ee`) — era el default anterior.
-3. sunset 🌅 (rosa/ámbar), 4. emerald 🌿 (verde/cian), 5. cyberpunk ⚡ (magenta/cian),
-   6. gold 👑 (ámbar/naranja), 7. **eclipse** 🔮 (negro absoluto `#000000` + violeta
-   `#a855f7`/`#6d28d9` asomando por las 4 esquinas vía `radial-gradient` en
-   `body::after`, + polvo de estrellas sutil en `body::before`; bordes de `.card`
-   con veta violeta tenue), 8. aurora ☀️ (modo **light**: define text/muted/panel/border claros).
+2. **cyberpunk** ⚡ ("Neón", magenta `#f0abfc` + cian `#22d3ee`).
+3. **eclipse** 🔮 (negro absoluto `#000000` + violeta `#a855f7`/`#6d28d9` asomando por
+   las 4 esquinas vía `radial-gradient` en `body::after`, + polvo de estrellas sutil en
+   `body::before`; bordes de `.card` con veta violeta tenue).
+4. **abismo** 🌑 (NUEVO): variante de eclipse **mucho más negra**, con el morado
+   apenas presente. Misma paleta que eclipse (primary/secondary violeta, bg `#000000`)
+   pero en CSS: esquinas moradas con opacidad muy baja (~0.1 vs 0.24 de eclipse),
+   un latido violeta tenue al centro y una viñeta negra más fuerte (`body::after`).
+   Además, un **halo morado que sigue el cursor** (`body::before` con
+   `radial-gradient at var(--gx) var(--gy)`): `useSpotlight` en App.tsx escribe
+   `--gx`/`--gy` (posición global del cursor en %) en `documentElement`. Respeta
+   `[data-reduce='true']` (oculta el halo del cursor). NO es "más opaco": es el mismo
+   negro con el morado retirado casi por completo salvo bordes/centro/cursor.
+5. **aurora** ☀️ (modo **light**: define text/muted/panel/border claros).
 `applyTheme` usa `shade()` (con clamp 0-255, OJO: antes había un bug de overflow que
 generaba colores "arcoíris"; ya corregido). `--grad = linear-gradient(135deg, primary, secondary)`.
 El acento personalizado (useUi.accent) sobrescribe el primary.
