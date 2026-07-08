@@ -448,8 +448,9 @@ h3 {
 
 .main {
   padding: 30px 38px 70px;
-  max-width: 1320px;
+  max-width: 1600px;
   width: 100%;
+  margin: 0 auto;
   animation: fadeUp 0.4s ease;
 }
 @keyframes fadeUp {
