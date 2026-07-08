@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Plus, Trash2, Flame, TrendingUp, Pencil, Check } from 'lucide-react'
+import { Plus, Trash2, Flame, TrendingUp, Pencil, Check, GripVertical } from 'lucide-react'
 import {
   AreaChart,
   Area,
@@ -27,7 +27,6 @@ import {
 } from '../utils/date'
 import type { Habit, HabitFrequency } from '../store/types'
 
-const EMOJIS = ['💪', '📚', '🏃', '🧘', '💧', '🥗', '😴', '✍️', '🎯', '🧠', '🦷', '🎸']
 const COLORS = ['#8b5cf6', '#22d3ee', '#34d399', '#fbbf24', '#fb7185', '#f43f5e']
 
 type View = 'semana' | 'mes'
@@ -40,14 +39,13 @@ const accentColor = () => {
 }
 
 export function Habitos() {
-  const { habits, addHabit, updateHabit } = useStore()
+  const { habits, addHabit, updateHabit, reorderHabits } = useStore()
   const frozenDays = useStore((s) => s.frozenDays)
   const [modal, setModal] = useState(false)
   const [lapseModal, setLapseModal] = useState(false)
   const [view, setView] = useState<View>('semana')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [name, setName] = useState('')
-  const [icon, setIcon] = useState('💪')
   const [color, setColor] = useState('#8b5cf6')
   const [freq, setFreq] = useState<HabitFrequency>('diario')
   const [target, setTarget] = useState('7')
@@ -110,7 +108,6 @@ export function Habitos() {
   const resetForm = () => {
     setEditingId(null)
     setName('')
-    setIcon('💪')
     setColor('#8b5cf6')
     setFreq('diario')
     setTarget('7')
@@ -128,7 +125,6 @@ export function Habitos() {
   const openEdit = (h: Habit) => {
     setEditingId(h.id)
     setName(h.name)
-    setIcon(h.icon)
     setColor(h.color)
     setFreq(h.frequency)
     setTarget(String(h.targetPerWeek || 7))
@@ -150,7 +146,7 @@ export function Habitos() {
     if (!name.trim()) return
     const payload = {
       name: name.trim(),
-      icon,
+      icon: editingId ? habits.find((h) => h.id === editingId)?.icon ?? '🔥' : '🔥',
       color,
       frequency: freq,
       targetPerWeek: freq === 'semanal' ? parseInt(target) || 3 : 7,
@@ -287,10 +283,7 @@ export function Habitos() {
             </div>
             {performance.map((h) => (
               <div className="perf-row" key={h.id}>
-                <div className="perf-name">
-                  <span style={{ fontSize: 18 }}>{h.icon}</span>
-                  {h.name}
-                </div>
+                <div className="perf-name">{h.name}</div>
                 <div className="perf-bar">
                   <Bar value={h.done} max={h.total || 1} color={barColor(h.pct)} />
                 </div>
@@ -310,12 +303,8 @@ export function Habitos() {
             ))}
           </div>
 
-          {/* ===== Tarjetas de hábito ===== */}
-          <div className="grid cols-2">
-            {habits.map((h) => (
-              <HabitCard key={h.id} h={h} week={week} today={today} frozenDays={frozenDays} onEdit={openEdit} />
-            ))}
-          </div>
+          {/* ===== Tarjetas de hábito (arrastrables para reordenar) ===== */}
+          <HabitGrid habits={habits} week={week} today={today} frozenDays={frozenDays} onEdit={openEdit} onReorder={reorderHabits} />
         </>
       )}
 
@@ -323,29 +312,6 @@ export function Habitos() {
         <div className="field">
           <label>Nombre</label>
           <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Leer 20 minutos" autoFocus />
-        </div>
-        <div className="field">
-          <label>Ícono</label>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {EMOJIS.map((e) => (
-              <button
-                key={e}
-                onClick={() => setIcon(e)}
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 12,
-                  fontSize: 21,
-                  border: '1px solid var(--border)',
-                  background: icon === e ? `${color}33` : 'rgba(0,0,0,0.2)',
-                  boxShadow: icon === e ? `0 0 0 2px ${color}` : 'none',
-                  transition: 'all 0.15s',
-                }}
-              >
-                {e}
-              </button>
-            ))}
-          </div>
         </div>
         <div className="field">
           <label>Color</label>
@@ -458,6 +424,78 @@ export function Habitos() {
   )
 }
 
+// Grid de hábitos arrastrable: se puede tomar una tarjeta por su asa (⠿) y
+// soltarla sobre otra para reordenar. El nuevo orden se guarda en el store
+// (Habit no tiene un campo `order`; el orden del array de `habits` ES el orden).
+function HabitGrid({
+  habits,
+  week,
+  today,
+  frozenDays,
+  onEdit,
+  onReorder,
+}: {
+  habits: Habit[]
+  week: string[]
+  today: string
+  frozenDays: string[]
+  onEdit: (h: Habit) => void
+  onReorder: (order: string[]) => void
+}) {
+  const [dragId, setDragId] = useState<string | null>(null)
+  const [overId, setOverId] = useState<string | null>(null)
+
+  // Orden visual en vivo: mueve el arrastrado justo antes/después del que sobrevuela.
+  const display = useMemo(() => {
+    if (!dragId || !overId || dragId === overId) return habits
+    const arr = [...habits]
+    const from = arr.findIndex((h) => h.id === dragId)
+    const to = arr.findIndex((h) => h.id === overId)
+    if (from < 0 || to < 0) return habits
+    const [moved] = arr.splice(from, 1)
+    arr.splice(to, 0, moved)
+    return arr
+  }, [habits, dragId, overId])
+
+  const handleDrop = () => {
+    if (dragId && overId && dragId !== overId) {
+      onReorder(display.map((h) => h.id))
+    }
+    setDragId(null)
+    setOverId(null)
+  }
+
+  return (
+    <div className="grid cols-2">
+      {display.map((h) => (
+        <div
+          key={h.id}
+          draggable
+          onDragStart={(e) => {
+            setDragId(h.id)
+            e.dataTransfer.effectAllowed = 'move'
+          }}
+          onDragOver={(e) => {
+            e.preventDefault()
+            if (h.id !== overId) setOverId(h.id)
+          }}
+          onDrop={(e) => {
+            e.preventDefault()
+            handleDrop()
+          }}
+          onDragEnd={() => {
+            setDragId(null)
+            setOverId(null)
+          }}
+          className={dragId === h.id ? 'dragging' : ''}
+        >
+          <HabitCard h={h} week={week} today={today} frozenDays={frozenDays} onEdit={onEdit} />
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // Tarjeta de un hábito. Se puede marcar HOY o AYER (exclusivamente esos 2 días):
 // hay hábitos que solo se pueden confirmar al día siguiente (ej. algo que se
 // mide al despertar), así que el día anterior queda editable un día más.
@@ -508,11 +546,13 @@ function HabitCard({
   return (
     <div className="card habit-card" style={{ ['--hc' as string]: h.color }}>
       <div className="habit-top">
-        <div className="habit-emoji" style={{ background: `${h.color}22`, color: h.color }}>
-          {h.icon}
-        </div>
+        <span className="habit-drag" title="Arrastra para reordenar">
+          <GripVertical size={16} />
+        </span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="habit-name">{h.name}</div>
+          <div className="habit-name" style={{ borderLeft: `3px solid ${h.color}`, paddingLeft: 9 }}>
+            {h.name}
+          </div>
         </div>
         <button className="icon-btn" title="Editar hábito" onClick={() => onEdit(h)}>
           <Pencil size={14} />

@@ -225,6 +225,13 @@ export const ACHIEVEMENTS: Achievement[] = [
     check: (s) => (s.game.usedFeatures ?? []).includes('edit-habit'),
   },
   {
+    id: 'habit-organizer',
+    name: 'Organizador',
+    desc: 'Arrastra un hábito para reordenar tu grid como quieras',
+    icon: '🧩',
+    check: (s) => (s.game.usedFeatures ?? []).includes('reorder-habits'),
+  },
+  {
     id: 'tree-builder',
     name: 'Divide y vencerás',
     desc: 'Crea una meta con al menos 2 sub-metas',

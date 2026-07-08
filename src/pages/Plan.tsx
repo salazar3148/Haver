@@ -250,10 +250,7 @@ export function Plan() {
                   onClick={() => togglePlanHabit(date, h.id)}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div className="habit-emoji" style={{ width: 38, height: 38, fontSize: 19, background: `${h.color}22`, color: h.color }}>
-                      {h.icon}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ flex: 1, minWidth: 0, borderLeft: `3px solid ${h.color}`, paddingLeft: 9 }}>
                       <div style={{ fontWeight: 700, fontSize: 13 }}>{h.name}</div>
                       <div style={{ fontSize: 11, color: 'var(--muted)' }}>
                         {committed ? '✓ comprometido' : 'tocar para añadir'}

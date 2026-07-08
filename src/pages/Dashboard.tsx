@@ -326,13 +326,7 @@ export function Dashboard() {
                 const partial = dayFraction(h, today) > 0 && !done
                 return (
                   <div className="list-row" key={h.id}>
-                    <div
-                      className="row-icon"
-                      style={{ background: `${h.color}22`, color: h.color }}
-                    >
-                      {h.icon}
-                    </div>
-                    <div className="row-main">
+                    <div className="row-main" style={{ borderLeft: `3px solid ${h.color}`, paddingLeft: 9 }}>
                       <div className="row-title">{h.name}</div>
                       <div className="row-sub">{h.frequency}</div>
                     </div>

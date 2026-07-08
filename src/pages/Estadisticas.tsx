@@ -89,8 +89,7 @@ export function Estadisticas() {
           {stats.map(({ h, st }) => (
             <div className="card" key={h.id}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                <div className="habit-emoji" style={{ width: 42, height: 42, background: `${h.color}22`, color: h.color }}>{h.icon}</div>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, borderLeft: `3px solid ${h.color}`, paddingLeft: 10 }}>
                   <div style={{ fontWeight: 700, fontSize: 15 }}>{h.name}</div>
                   <div style={{ fontSize: 12, color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 5 }}>
                     <Flame size={12} style={{ color: 'var(--amber)' }} /> Racha {st.streak} días

@@ -37,6 +37,7 @@ interface Store extends AppState {
   // habitos
   addHabit: (h: Omit<Habit, 'id' | 'createdAt' | 'log'>) => void
   updateHabit: (id: string, patch: Partial<Omit<Habit, 'id' | 'createdAt' | 'log'>>) => void
+  reorderHabits: (order: string[]) => void
   toggleHabit: (id: string, date: string) => void
   toggleHabitSub: (id: string, date: string, subId: string) => void
   removeHabit: (id: string) => void
@@ -295,6 +296,16 @@ export const useStore = create<Store>()(
         },
         removeHabit: (id) =>
           set((st) => ({ habits: st.habits.filter((h) => h.id !== id) })),
+        reorderHabits: (order) => {
+          set((st) => {
+            const byId = new Map(st.habits.map((h) => [h.id, h]))
+            const reordered = order.map((id) => byId.get(id)).filter((h): h is Habit => !!h)
+            // Por si algún id no vino en `order` (no debería pasar), se anexa al final.
+            const missing = st.habits.filter((h) => !order.includes(h.id))
+            return { habits: [...reordered, ...missing] }
+          })
+          get().markFeatureUsed('reorder-habits')
+        },
         toggleFrozenDay: (date) => {
           set((st) => ({
             frozenDays: st.frozenDays.includes(date)
