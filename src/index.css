@@ -960,6 +960,10 @@ h3 {
   border-style: dashed;
   transform: scale(0.98);
 }
+.grid.cols-2 > [draggable='true'].drag-over .habit-card {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary) inset;
+}
 .habit-emoji {
   width: 46px;
   height: 46px;

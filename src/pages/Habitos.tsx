@@ -427,6 +427,13 @@ export function Habitos() {
 // Grid de hábitos arrastrable: se puede tomar una tarjeta por su asa (⠿) y
 // soltarla sobre otra para reordenar. El nuevo orden se guarda en el store
 // (Habit no tiene un campo `order`; el orden del array de `habits` ES el orden).
+//
+// IMPORTANTE: NO se reordena el array en vivo durante `dragOver`. Mover los
+// nodos del DOM mientras el gesto de drag nativo (HTML5 DnD) sigue activo hace
+// que el navegador cancele el drag (cursor "prohibido") y, como el mouse queda
+// sobre otra tarjeta tras el swap, se disparaba otro reorder al instante:
+// swaps infinitos en bucle. Ahora solo se marca visualmente el destino
+// (`overId`) y el reordenamiento real se calcula una sola vez, al soltar.
 function HabitGrid({
   habits,
   week,
@@ -445,21 +452,16 @@ function HabitGrid({
   const [dragId, setDragId] = useState<string | null>(null)
   const [overId, setOverId] = useState<string | null>(null)
 
-  // Orden visual en vivo: mueve el arrastrado justo antes/después del que sobrevuela.
-  const display = useMemo(() => {
-    if (!dragId || !overId || dragId === overId) return habits
-    const arr = [...habits]
-    const from = arr.findIndex((h) => h.id === dragId)
-    const to = arr.findIndex((h) => h.id === overId)
-    if (from < 0 || to < 0) return habits
-    const [moved] = arr.splice(from, 1)
-    arr.splice(to, 0, moved)
-    return arr
-  }, [habits, dragId, overId])
-
-  const handleDrop = () => {
-    if (dragId && overId && dragId !== overId) {
-      onReorder(display.map((h) => h.id))
+  const handleDrop = (targetId: string) => {
+    if (dragId && targetId && dragId !== targetId) {
+      const order = habits.map((h) => h.id)
+      const from = order.indexOf(dragId)
+      const to = order.indexOf(targetId)
+      if (from >= 0 && to >= 0) {
+        order.splice(from, 1)
+        order.splice(to, 0, dragId)
+        onReorder(order)
+      }
     }
     setDragId(null)
     setOverId(null)
@@ -467,7 +469,7 @@ function HabitGrid({
 
   return (
     <div className="grid cols-2">
-      {display.map((h) => (
+      {habits.map((h) => (
         <div
           key={h.id}
           draggable
@@ -477,17 +479,21 @@ function HabitGrid({
           }}
           onDragOver={(e) => {
             e.preventDefault()
+            e.dataTransfer.dropEffect = 'move'
             if (h.id !== overId) setOverId(h.id)
+          }}
+          onDragLeave={() => {
+            setOverId((cur) => (cur === h.id ? null : cur))
           }}
           onDrop={(e) => {
             e.preventDefault()
-            handleDrop()
+            handleDrop(h.id)
           }}
           onDragEnd={() => {
             setDragId(null)
             setOverId(null)
           }}
-          className={dragId === h.id ? 'dragging' : ''}
+          className={[dragId === h.id ? 'dragging' : '', overId === h.id && dragId !== h.id ? 'drag-over' : ''].join(' ').trim()}
         >
           <HabitCard h={h} week={week} today={today} frozenDays={frozenDays} onEdit={onEdit} />
         </div>
