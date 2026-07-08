@@ -4053,6 +4053,10 @@ h3 {
   font-size: 14.5px;
   font-family: 'Sora', sans-serif;
   line-height: 1.2;
+  background: linear-gradient(120deg, var(--text) 40%, color-mix(in srgb, var(--primary) 70%, var(--text)) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 .price-unit {
   font-size: 11.5px;
@@ -4070,6 +4074,17 @@ h3 {
   font-weight: 800;
   font-size: 24px;
   line-height: 1;
+  color: var(--text);
+}
+.price-card.great .price-now,
+.price-card.good .price-now {
+  color: var(--emerald);
+}
+.price-card.mid .price-now {
+  color: var(--amber);
+}
+.price-card.high .price-now {
+  color: var(--rose);
 }
 .price-now-sub {
   font-size: 11px;
@@ -4137,6 +4152,7 @@ h3 {
   font-size: 13px;
   font-weight: 800;
   font-family: 'Sora', sans-serif;
+  color: var(--text);
 }
 .ps-val.green {
   color: var(--emerald);
@@ -4154,8 +4170,16 @@ h3 {
   align-items: center;
   gap: 9px;
   font-size: 12px;
-  padding: 5px 2px;
+  padding: 5px 6px;
   border-bottom: 1px dashed var(--border);
+  border-radius: 8px;
+  transition: background 0.15s ease;
+}
+.ph-row.row-low {
+  background: rgba(52, 211, 153, 0.07);
+}
+.ph-row.row-high {
+  background: rgba(244, 63, 94, 0.07);
 }
 .ph-date {
   color: var(--muted);
@@ -4174,6 +4198,16 @@ h3 {
   margin-left: auto;
   font-weight: 800;
   font-family: 'Sora', sans-serif;
+  color: var(--text);
+}
+.ph-price.row-low {
+  color: var(--emerald);
+}
+.ph-price.row-mid {
+  color: var(--amber);
+}
+.ph-price.row-high {
+  color: var(--rose);
 }
 .price-empty {
   font-size: 12.5px;

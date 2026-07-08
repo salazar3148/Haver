@@ -86,6 +86,16 @@ function analyzePrices(item: PriceItem, rate: number) {
   return { pts, cop, latest, latestCOP, min, max, avg, cls, txt, pct, n }
 }
 
+// Clasifica un precio puntual del historial frente al promedio, para pintar
+// cada fila de "Registro" con su propio color (barato/normal/caro) en vez de
+// que todo el texto se vea blanco/monótono.
+function rowClass(cop: number, avg: number) {
+  if (!avg) return 'row-mid'
+  if (cop <= avg * 0.95) return 'row-low'
+  if (cop >= avg * 1.05) return 'row-high'
+  return 'row-mid'
+}
+
 const SUPPLY_EMOJIS = ['🧴', '🪥', '☕', '🧻', '🧼', '🥛', '🍚', '💊', '🧂', '🧽', '🚿', '🪒']
 const WISH_EMOJIS = ['🎧', '⌨️', '📱', '👟', '🎮', '📷', '⌚', '🚲', '💻', '🪑', '🎸', '🎁']
 
@@ -527,20 +537,23 @@ export function Inventario() {
                         )}
 
                         <div className="price-history">
-                          {[...a.pts].reverse().slice(0, 4).map((p) => (
-                            <div className="ph-row" key={p.id}>
+                          {[...a.pts].reverse().slice(0, 4).map((p) => {
+                            const rc = rowClass(toCOP(p.price, p.currency, usdRate), a.avg)
+                            return (
+                            <div className={`ph-row ${rc}`} key={p.id}>
                               <span className="ph-date">{shortLabel(p.date)}</span>
                               {p.store && (
                                 <span className="ph-store">
                                   <Store size={11} /> {p.store}
                                 </span>
                               )}
-                              <span className="ph-price">{money(p.price, p.currency)}</span>
+                              <span className={`ph-price ${rc}`}>{money(p.price, p.currency)}</span>
                               <button className="icon-btn" style={{ width: 24, height: 24 }} onClick={() => removePricePoint(it.id, p.id)}>
                                 <Trash2 size={12} />
                               </button>
                             </div>
-                          ))}
+                            )
+                          })}
                         </div>
                       </>
                     )}
